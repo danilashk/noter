@@ -573,31 +573,37 @@ export default function BoardPage() {
         ))}
         
         {cards.length === 0 && !session?.hasStartedBrainstorm && (
-          <div className="flex items-center justify-center h-full" style={{ pointerEvents: 'auto' }}>
-            <Card className="p-8 text-center max-w-md glass-effect relative z-30">
-              <div className="w-16 h-16 mx-auto mb-4 bg-primary/20 rounded-full flex items-center justify-center">
-                <PlusIcon className="w-8 h-8 text-primary" />
+          <>
+            <div className="flex items-center justify-center h-full" style={{ pointerEvents: 'auto' }}>
+              <div className="flex flex-col items-center">
+                <Card className="p-8 text-center max-w-md glass-effect relative z-30">
+                  <div className="w-16 h-16 mx-auto mb-4 bg-primary/20 rounded-full flex items-center justify-center">
+                    <PlusIcon className="w-8 h-8 text-primary" />
+                  </div>
+                  
+                  <h3 className="text-xl font-semibold mb-2 text-center">
+                    Начните мозговой штурм!
+                  </h3>
+                  <p className="text-muted-foreground mb-6 text-center">
+                    Создайте первую карточку с идеей и запустите творческий процесс
+                  </p>
+                  
+                  <button 
+                    onClick={handleCreateCard} 
+                    className="btn-primary text-lg px-6 py-3 w-full"
+                  >
+                    Создать первую заметку
+                  </button>
+                  
+                  <div className="mt-6 text-xs text-gray-500 text-center">
+                    Подсказка: Для создания последующих карточек используйте двойной клик по пустому месту
+                  </div>
+                </Card>
+                
+
               </div>
-              
-              <h3 className="text-xl font-semibold mb-2 text-center">
-                Начните мозговой штурм!
-              </h3>
-              <p className="text-muted-foreground mb-6 text-center">
-                Создайте первую карточку с идеей и запустите творческий процесс
-              </p>
-              
-              <button 
-                onClick={handleCreateCard} 
-                className="btn-primary text-lg px-6 py-3 w-full"
-              >
-                Создать первую заметку
-              </button>
-              
-              <div className="mt-6 text-xs text-muted-foreground/70 text-center">
-                Подсказка: Для создания последующих карточек используйте двойной клик по пустому месту
-              </div>
-            </Card>
-          </div>
+            </div>
+          </>
         )}
         
         {/* Курсоры других участников */}

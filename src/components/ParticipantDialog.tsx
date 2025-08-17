@@ -105,7 +105,7 @@ export function ParticipantDialog({ isOpen, onJoin, sessionTitle, isNewSession =
               )}
             </button>
             
-            <p className="text-xs text-muted-foreground/60 text-center mt-3">
+            <p className="text-xs text-gray-500 text-center mt-5">
               {isNewSession 
                 ? 'Штурмуйте идеи в реальном времени с коллегами'
                 : 'Начните создавать идеи вместе в реальном времени'
