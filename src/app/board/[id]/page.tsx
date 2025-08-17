@@ -296,7 +296,8 @@ export default function BoardPage() {
         style={{
           transform: `translate(${panX}px, ${panY}px) scale(${scale})`,
           transformOrigin: '0 0',
-          zIndex: 2, // Заметки всегда поверх канваса
+          zIndex: 10, // Заметки всегда поверх канваса
+          pointerEvents: cards.length === 0 ? 'auto' : 'none', // Позволяет взаимодействие только когда нет карточек
         }}
       >
         {cards.map((card) => (
@@ -307,7 +308,7 @@ export default function BoardPage() {
               left: card.position.x,
               top: card.position.y,
               pointerEvents: isDrawingMode ? 'none' : 'auto',
-              zIndex: (selectedCard === card.id || getParticipantBySelectedCard(card.id)) ? 10 : 1,
+              zIndex: (selectedCard === card.id || getParticipantBySelectedCard(card.id)) ? 20 : 15,
             }}
             onClick={() => {
               setSelectedCard(card.id);
@@ -409,8 +410,8 @@ export default function BoardPage() {
         ))}
         
         {cards.length === 0 && (
-          <div className="flex items-center justify-center h-full">
-            <Card className="p-8 text-center max-w-md glass-effect">
+          <div className="flex items-center justify-center h-full" style={{ pointerEvents: 'auto' }}>
+            <Card className="p-8 text-center max-w-md glass-effect relative z-30">
               <div className="w-16 h-16 mx-auto mb-4 bg-primary/20 rounded-full flex items-center justify-center">
                 <PlusIcon className="w-8 h-8 text-primary" />
               </div>

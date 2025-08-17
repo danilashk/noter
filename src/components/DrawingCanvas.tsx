@@ -48,6 +48,7 @@ export function DrawingCanvas({
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState<Point | null>(null);
   const [points, setPoints] = useState<Point[]>([]); // Для текущей линии
+  const [currentLineId, setCurrentLineId] = useState<string | null>(null); // ID текущей рисуемой линии
 
 
 
@@ -98,17 +99,17 @@ export function DrawingCanvas({
     ctx.lineWidth = 3;
     ctx.globalAlpha = 0.9;
     
-    // Рисуем все линии из пропсов (realtime)
+    // Рисуем сохраненные линии из realtime
     drawingLines.forEach(line => {
       drawSmoothLine(ctx, line.points, line.color);
     });
     
-    // Рисуем текущую линию, если она есть
-    if (points.length > 0) {
+    // Рисуем локальную линию если есть точки (во время рисования и после)
+    if (points.length > 1) {
       const currentColor = getMutedColor(userColor);
       drawSmoothLine(ctx, points, currentColor);
     }
-  }, [drawingLines, points, drawSmoothLine, userColor]);
+  }, [drawingLines, drawSmoothLine, points, userColor]);
 
   // Инициализация канвасов
   useEffect(() => {
@@ -188,6 +189,9 @@ export function DrawingCanvas({
     const mutedColor = getMutedColor(userColor);
     ctx.strokeStyle = mutedColor;
 
+    // Генерируем временный ID для текущей линии
+    const tempId = `temp-${Date.now()}-${Math.random()}`;
+    setCurrentLineId(tempId);
     setIsDrawing(true);
     const point = getCanvasPoint(e.clientX, e.clientY);
     setPoints([point]); // Начинаем новый массив точек
@@ -203,13 +207,11 @@ export function DrawingCanvas({
 
     const currentPoint = getCanvasPoint(e.clientX, e.clientY);
     
-    // Добавляем точку к массиву текущей линии
+    // Добавляем точку и перерисовываем
     setPoints(prevPoints => {
       const newPoints = [...prevPoints, currentPoint];
-      
-      // Перерисовываем все линии включая текущую
+      // Перерисовываем сразу
       redrawAllLines(ctx, drawingCanvas);
-      
       return newPoints;
     });
   }, [isDrawing, isDrawingMode, getCanvasPoint, redrawAllLines]);
@@ -222,13 +224,12 @@ export function DrawingCanvas({
     const currentColor = getMutedColor(userColor);
     if (onCreateLine) {
       onCreateLine([...points], currentColor);
-      // Не очищаем точки - оставляем линию видимой до получения обновления через realtime
-      // setPoints([]) будет вызван только когда придут обновленные данные из БД
-    } else {
-      setPoints([]);
     }
     
+    // НЕ очищаем точки сразу - линия должна остаться видимой
+    // Очистка произойдет когда линия придет через realtime
     setIsDrawing(false);
+    setCurrentLineId(null);
   }, [isDrawing, points, userColor, onCreateLine]);
 
   // Панорамирование
@@ -288,6 +289,19 @@ export function DrawingCanvas({
     return () => canvas.removeEventListener('wheel', handleWheel);
   }, [handleWheel]);
 
+  // Очистка локальной линии когда она появляется в realtime
+  useEffect(() => {
+    // Если есть локальная линия и она уже не рисуется
+    if (points.length > 0 && !isDrawing) {
+      // Ждем немного и очищаем локальную линию
+      const timeoutId = setTimeout(() => {
+        setPoints([]);
+      }, 500); // 500мс должно хватить для получения данных через realtime
+      
+      return () => clearTimeout(timeoutId);
+    }
+  }, [points.length, isDrawing]);
+
   // Перерисовка канваса при изменении линий из пропсов
   useEffect(() => {
     const drawingCanvas = drawingCanvasRef.current;
@@ -296,14 +310,8 @@ export function DrawingCanvas({
     const ctx = drawingCanvas.getContext('2d');
     if (!ctx) return;
     
-    // Если есть сохраненные линии и текущие точки, очищаем текущие точки
-    // (это означает что наша линия была сохранена и пришла через realtime)
-    if (drawingLines.length > 0 && points.length > 0 && !isDrawing) {
-      setPoints([]);
-    }
-    
     redrawAllLines(ctx, drawingCanvas);
-  }, [drawingLines, redrawAllLines, points.length, isDrawing]);
+  }, [drawingLines, redrawAllLines, points, isDrawing]);
 
   // Тестовая функция рисования
   const testDraw = useCallback((e: React.MouseEvent) => {
