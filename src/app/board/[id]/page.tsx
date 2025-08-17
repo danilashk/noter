@@ -25,6 +25,8 @@ import { ToolsPanel } from '@/components/ToolsPanel'
 import { GridBackground } from '@/components/GridBackground'
 import { UserTheme } from '@/components/UserTheme'
 import { useCanvas } from '@/hooks/useCanvas'
+import { useToast } from '@/hooks/useToast'
+import { ToastManager } from '@/components/ui/toast'
 
 export default function BoardPage() {
   const params = useParams()
@@ -42,6 +44,9 @@ export default function BoardPage() {
   const [draggingCard, setDraggingCard] = useState<string | null>(null);
   const [resizingCard, setResizingCard] = useState<string | null>(null);
   const [tempCardHeights, setTempCardHeights] = useState<Record<string, number>>({});
+  
+  // Toast уведомления
+  const { toasts, showWarning, removeToast } = useToast();
 
   // Обрабатываем params и обновляем sessionId
   React.useEffect(() => {
@@ -51,16 +56,28 @@ export default function BoardPage() {
       return;
     }
     
+    // Проверяем валидность ID (должен быть UUID или 'new')
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    
     if (id === 'new' && !hasRedirected) {
       const newId = crypto.randomUUID();
       setSessionId(newId);
       setHasRedirected(true);
       // Используем Next.js router для правильной навигации
       router.replace(`/board/${newId}`);
-    } else if (id !== 'new' && id !== sessionId) {
+    } else if (id !== 'new' && !isValidUUID) {
+      // Некорректный ID - редиректим на главную с уведомлением
+      showWarning(
+        'Некорректная ссылка на доску. Вы были перенаправлены для создания новой доски.',
+        6000
+      );
+      setTimeout(() => {
+        router.replace('/board/new');
+      }, 1000);
+    } else if (id !== 'new' && id !== sessionId && isValidUUID) {
       setSessionId(id);
     }
-  }, [params.id, router, hasRedirected, sessionId]);
+  }, [params.id, router, hasRedirected, sessionId, showWarning]);
 
   // Включаем все хуки
   const { session, loading: sessionLoading, error: sessionError, updateHasStartedBrainstorm } = useSession(sessionId);
@@ -608,6 +625,9 @@ export default function BoardPage() {
         isVisible={session?.hasStartedBrainstorm || false}
       />
       </div>
+      
+      {/* Toast уведомления */}
+      <ToastManager toasts={toasts} onRemoveToast={removeToast} />
     </UserTheme>
   );
 }

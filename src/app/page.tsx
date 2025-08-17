@@ -1,16 +1,40 @@
 'use client'
 
 import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
+import { useToast } from '@/hooks/useToast'
+import { ToastManager } from '@/components/ui/toast'
 
 export default function HomePage() {
   const router = useRouter()
+  const searchParams = useSearchParams()
+  const { toasts, showWarning, removeToast } = useToast()
 
   useEffect(() => {
-    // Автоматически перенаправляем на создание новой сессии
-    router.replace('/board/new')
-  }, [router])
+    // Проверяем, был ли пользователь перенаправлен из-за некорректного URL
+    const isRedirected = searchParams.get('redirected') === 'true'
+    
+    if (isRedirected) {
+      // Показываем уведомление о перенаправлении
+      showWarning(
+        'Страница не найдена. Вы были перенаправлены на главную страницу для создания новой доски.',
+        6000
+      )
+      
+      // Очищаем параметр из URL
+      const newUrl = new URL(window.location.href)
+      newUrl.searchParams.delete('redirected')
+      window.history.replaceState({}, '', newUrl.pathname)
+    }
+
+    // Автоматически перенаправляем на создание новой сессии с небольшой задержкой
+    const timer = setTimeout(() => {
+      router.replace('/board/new')
+    }, isRedirected ? 1000 : 100) // Больше времени если показываем уведомление
+
+    return () => clearTimeout(timer)
+  }, [router, searchParams, showWarning])
 
   return (
     <div className="min-h-screen gradient-bg flex items-center justify-center">
@@ -26,6 +50,9 @@ export default function HomePage() {
           </div>
         </div>
       </Card>
+      
+      {/* Toast уведомления */}
+      <ToastManager toasts={toasts} onRemoveToast={removeToast} />
     </div>
   )
 }
