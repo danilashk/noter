@@ -74,10 +74,8 @@ export function usePresence(sessionId: string, currentParticipant: Participant |
         setCursors(activeCursors)
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        console.log('Cursor joined:', newPresences)
-      })
+        })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        console.log('Cursor left:', leftPresences)
         setCursors(prev => {
           const updated = { ...prev }
           leftPresences.forEach((participant: ParticipantCursor) => {

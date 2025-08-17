@@ -26,8 +26,7 @@ export const participantStorage = {
       };
       
       localStorage.setItem(PARTICIPANT_KEY, JSON.stringify(storedData));
-      console.log('[participantStorage] Participant saved:', participant.name);
-    } catch (error) {
+      } catch (error) {
       console.error('[participantStorage] Failed to save participant:', error);
     }
   },
@@ -39,7 +38,6 @@ export const participantStorage = {
     try {
       const stored = localStorage.getItem(PARTICIPANT_KEY);
       if (!stored) {
-        console.log('[participantStorage] No stored participant found');
         return null;
       }
 
@@ -47,14 +45,12 @@ export const participantStorage = {
       
       // Проверяем срок действия
       if (Date.now() - data.timestamp > STORAGE_EXPIRY) {
-        console.log('[participantStorage] Stored participant expired');
         localStorage.removeItem(PARTICIPANT_KEY);
         return null;
       }
 
       // Проверяем соответствие сессии
       if (data.sessionId !== sessionId) {
-        console.log('[participantStorage] Participant from different session');
         return null;
       }
 
@@ -67,7 +63,6 @@ export const participantStorage = {
         lastSeen: new Date()
       };
 
-      console.log('[participantStorage] Participant loaded:', participant.name);
       return participant;
     } catch (error) {
       console.error('[participantStorage] Failed to load participant:', error);
@@ -82,8 +77,7 @@ export const participantStorage = {
   clearParticipant(): void {
     try {
       localStorage.removeItem(PARTICIPANT_KEY);
-      console.log('[participantStorage] Participant cleared');
-    } catch (error) {
+      } catch (error) {
       console.error('[participantStorage] Failed to clear participant:', error);
     }
   },

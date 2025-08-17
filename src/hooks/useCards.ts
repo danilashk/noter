@@ -23,26 +23,21 @@ export function useCards(sessionId: string): UseCardsState & UseCardsActions {
   const [error, setError] = useState<string | null>(null);
 
   const fetchCards = useCallback(async () => {
-    console.log('useCards fetchCards called with sessionId:', sessionId);
     if (!sessionId || sessionId.trim() === '') {
-      console.log('useCards: sessionId is empty, skipping fetch');
       setLoading(false);
       return;
     }
 
     try {
-      console.log('useCards: starting fetch...');
       setLoading(true);
       setError(null);
       const fetchedCards = await cardsApi.getCardsBySession(sessionId);
-      console.log('useCards: fetch completed, cards:', fetchedCards);
       setCards(fetchedCards);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Неизвестная ошибка';
       console.error('useCards: fetch failed:', err);
       setError(errorMessage);
     } finally {
-      console.log('useCards: setting loading to false');
       setLoading(false);
     }
   }, [sessionId]);

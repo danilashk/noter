@@ -5,13 +5,6 @@ import { getNextAvailableColor, isParticipantLimitReached } from '@/lib/colors';
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
 
-// Логируем для отладки (уберем в продакшене)
-console.log('🔧 Supabase config check:', {
-  url: supabaseUrl,
-  hasKey: !!supabaseAnonKey,
-  keyLength: supabaseAnonKey?.length || 0
-});
-
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 export async function POST(request: NextRequest) {
@@ -24,12 +17,6 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
-
-    console.log('🔍 Поиск/создание участника:', {
-      sessionId: sessionId.substring(0, 8) + '...',
-      fingerprint: userFingerprint.substring(0, 8) + '...',
-      displayName
-    });
 
     // Сначала ищем существующего участника по fingerprint
     const { data: existingParticipant } = await supabase
@@ -46,8 +33,6 @@ export async function POST(request: NextRequest) {
         .update({ last_seen: new Date().toISOString() })
         .eq('id', existingParticipant.id);
 
-      console.log('🔄 Найден существующий участник:', existingParticipant.display_name);
-      
       return NextResponse.json({
         id: existingParticipant.id,
         name: existingParticipant.display_name,
@@ -101,8 +86,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
-    console.log('🆕 Создан новый участник:', newParticipant.display_name, 'с цветом:', assignedColor);
 
     return NextResponse.json({
       id: newParticipant.id,

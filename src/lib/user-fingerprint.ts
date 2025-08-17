@@ -33,7 +33,6 @@ export async function generateBrowserFingerprint(): Promise<string> {
     
     return hashHex.substring(0, 32); // Берем первые 32 символа
   } catch (error) {
-    console.warn('Ошибка генерации fingerprint, используем fallback:', error);
     // Fallback к простому случайному ID
     return 'fallback_' + Math.random().toString(36).substring(2, 15);
   }
@@ -63,7 +62,6 @@ export async function getStableUserId(): Promise<string> {
   let userId = getCookie('brainstorm_user_id');
   
   if (userId && userId.length > 10) {
-    console.log('🍪 Восстановлен User ID из cookie:', userId.substring(0, 8) + '...');
     return userId;
   }
 
@@ -76,7 +74,6 @@ export async function getStableUserId(): Promise<string> {
   // 4. Сохраняем в cookie на год
   setCookie('brainstorm_user_id', userId, 365);
   
-  console.log('🆔 Создан новый User ID:', userId.substring(0, 8) + '...');
   return userId;
 }
 

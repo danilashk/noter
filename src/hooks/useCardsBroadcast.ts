@@ -41,8 +41,6 @@ export function useCardsBroadcast(
   useEffect(() => {
     if (!sessionId) return
 
-    console.log(`[useCardsBroadcast] Connecting to cards:${sessionId}`)
-
     // Создаем канал для синхронизации карточек
     const cardsChannel = supabase.channel(`cards:${sessionId}`, {
       config: {
@@ -55,22 +53,18 @@ export function useCardsBroadcast(
       .on('broadcast', { event: 'card_change' }, ({ payload }) => {
         const cardData = payload as CardBroadcastData & { userId: string; timestamp: number }
         
-        console.log(`[useCardsBroadcast] Received card change:`, cardData)
-        
         // Не обрабатываем собственные изменения
         if (cardData.userId !== currentUserId) {
           onCardChange(cardData)
         }
       })
       .subscribe((status) => {
-        console.log(`[useCardsBroadcast] Subscription status:`, status)
         setIsConnected(status === 'SUBSCRIBED')
       })
 
     setChannel(cardsChannel)
 
     return () => {
-      console.log(`[useCardsBroadcast] Disconnecting from cards:${sessionId}`)
       cardsChannel.unsubscribe()
       setChannel(null)
       setIsConnected(false)

@@ -2,6 +2,7 @@ export interface Card {
   id: string
   content: string
   position: { x: number; y: number }
+  height: number
   createdAt: Date
   updatedAt: Date
   createdBy: string | null
@@ -10,19 +11,23 @@ export interface Card {
 export interface CreateCardData {
   content: string
   position: { x: number; y: number }
+  height?: number
   createdBy: string | null
 }
 
 export interface UpdateCardData {
   content?: string
   position?: { x: number; y: number }
+  height?: number
 }
 
 export interface Session {
   id: string
   title?: string
   createdAt: Date
+  lastActivity: Date
   createdBy?: string | null
+  hasStartedBrainstorm?: boolean
 }
 
 export interface CreateSessionData {

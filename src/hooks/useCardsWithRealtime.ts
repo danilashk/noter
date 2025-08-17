@@ -15,6 +15,7 @@ interface UseCardsRealtimeActions {
   updateCard: (cardId: string, updates: UpdateCardData) => Promise<void>;
   deleteCard: (cardId: string) => Promise<void>;
   updateCardPosition: (cardId: string, position: { x: number; y: number }) => Promise<void>;
+  updateCardHeight: (cardId: string, height: number) => Promise<void>;
   updateMultiplePositions: (updates: Array<{ id: string; position: { x: number; y: number } }>) => Promise<void>;
   refetch: () => Promise<void>;
 }
@@ -29,8 +30,6 @@ export function useCardsWithRealtime(
 
   // Обработчик realtime изменений карточек от других пользователей
   const handleCardChange = useCallback((data: any) => {
-    console.log('[useCardsWithRealtime] Processing card change:', data);
-    
     switch (data.type) {
       case 'created':
         if (data.card) {
@@ -39,7 +38,6 @@ export function useCardsWithRealtime(
             if (prev.some(card => card.id === data.card.id)) {
               return prev;
             }
-            console.log('[useCardsWithRealtime] Adding new card:', data.card);
             return [...prev, data.card];
           });
         }
@@ -52,15 +50,13 @@ export function useCardsWithRealtime(
               card.id === data.card.id ? data.card : card
             )
           );
-          console.log('[useCardsWithRealtime] Updated card:', data.card.id);
-        }
+          }
         break;
 
       case 'deleted':
         if (data.cardId) {
           setCards(prev => prev.filter(card => card.id !== data.cardId));
-          console.log('[useCardsWithRealtime] Deleted card:', data.cardId);
-        }
+          }
         break;
 
       case 'moved':
@@ -72,13 +68,23 @@ export function useCardsWithRealtime(
                 : card
             )
           );
-          console.log('[useCardsWithRealtime] Moved card:', data.cardId, data.position);
-        }
+          }
+        break;
+
+      case 'resized':
+        if (data.cardId && data.height) {
+          setCards(prev =>
+            prev.map(card =>
+              card.id === data.cardId
+                ? { ...card, height: data.height }
+                : card
+            )
+          );
+          }
         break;
 
       default:
-        console.warn('[useCardsWithRealtime] Unknown card change type:', data.type);
-    }
+        }
   }, []);
 
   // Подключаем realtime broadcast
@@ -89,26 +95,21 @@ export function useCardsWithRealtime(
   );
 
   const fetchCards = useCallback(async () => {
-    console.log('useCardsWithRealtime fetchCards called with sessionId:', sessionId);
     if (!sessionId || sessionId.trim() === '') {
-      console.log('useCardsWithRealtime: sessionId is empty, skipping fetch');
       setLoading(false);
       return;
     }
 
     try {
-      console.log('useCardsWithRealtime: starting fetch...');
       setLoading(true);
       setError(null);
       const fetchedCards = await cardsApi.getCardsBySession(sessionId);
-      console.log('useCardsWithRealtime: fetch completed, cards:', fetchedCards);
       setCards(fetchedCards);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Неизвестная ошибка';
       console.error('useCardsWithRealtime: fetch failed:', err);
       setError(errorMessage);
     } finally {
-      console.log('useCardsWithRealtime: setting loading to false');
       setLoading(false);
     }
   }, [sessionId]);
@@ -131,8 +132,7 @@ export function useCardsWithRealtime(
         card: newCard
       });
       
-      console.log('[useCardsWithRealtime] Card created and broadcasted:', newCard.id);
-    } catch (err) {
+      } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ошибка создания карточки';
       setError(errorMessage);
       console.error('Ошибка создания карточки:', err);
@@ -156,8 +156,7 @@ export function useCardsWithRealtime(
         card: updatedCard
       });
       
-      console.log('[useCardsWithRealtime] Card updated and broadcasted:', cardId);
-    } catch (err) {
+      } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ошибка обновления карточки';
       setError(errorMessage);
       console.error('Ошибка обновления карточки:', err);
@@ -179,8 +178,7 @@ export function useCardsWithRealtime(
         cardId
       });
       
-      console.log('[useCardsWithRealtime] Card deleted and broadcasted:', cardId);
-    } catch (err) {
+      } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ошибка удаления карточки';
       setError(errorMessage);
       console.error('Ошибка удаления карточки:', err);
@@ -207,13 +205,41 @@ export function useCardsWithRealtime(
       // Отправляем обновление на сервер
       await cardsApi.updateCard(cardId, { position });
       
-      console.log('[useCardsWithRealtime] Card position updated and broadcasted:', cardId, position);
-    } catch (err) {
+      } catch (err) {
       // В случае ошибки, откатываем изменения
       await fetchCards();
       const errorMessage = err instanceof Error ? err.message : 'Ошибка обновления позиции';
       setError(errorMessage);
       console.error('Ошибка обновления позиции:', err);
+      throw err;
+    }
+  }, [fetchCards, broadcastCardChange]);
+
+  const updateCardHeight = useCallback(async (cardId: string, height: number) => {
+    try {
+      // Оптимистично обновляем UI
+      setCards(prev =>
+        prev.map(card =>
+          card.id === cardId ? { ...card, height } : card
+        )
+      );
+
+      // Отправляем изменение другим пользователям сразу (для плавности)
+      broadcastCardChange({
+        type: 'resized',
+        cardId,
+        height
+      });
+
+      // Отправляем обновление на сервер
+      await cardsApi.updateCard(cardId, { height });
+      
+      } catch (err) {
+      // В случае ошибки, откатываем изменения
+      await fetchCards();
+      const errorMessage = err instanceof Error ? err.message : 'Ошибка обновления размера';
+      setError(errorMessage);
+      console.error('Ошибка обновления размера:', err);
       throw err;
     }
   }, [fetchCards, broadcastCardChange]);
@@ -240,8 +266,7 @@ export function useCardsWithRealtime(
       // Отправляем обновления на сервер
       await cardsApi.updateCardPositions(updates);
       
-      console.log('[useCardsWithRealtime] Multiple positions updated and broadcasted:', updates.length);
-    } catch (err) {
+      } catch (err) {
       // В случае ошибки, откатываем изменения
       await fetchCards();
       const errorMessage = err instanceof Error ? err.message : 'Ошибка обновления позиций';
@@ -264,6 +289,7 @@ export function useCardsWithRealtime(
     updateCard,
     deleteCard,
     updateCardPosition,
+    updateCardHeight,
     updateMultiplePositions,
     refetch,
   };

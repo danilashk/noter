@@ -10,18 +10,14 @@ export function useDrawingWithRealtime(sessionId: string, currentParticipantId: 
   // Загрузка начальных линий
   useEffect(() => {
     if (!sessionId) {
-      console.log('🎨 Нет sessionId для загрузки линий');
       return;
     }
-
-    console.log('🎨 Загружаю начальные линии для сессии:', sessionId);
 
     const loadLines = async () => {
       try {
         setLoading(true);
         setError(null);
         const initialLines = await drawingApi.getDrawingLines(sessionId);
-        console.log('🎨 Загружено линий из БД:', initialLines.length);
         setLines(initialLines);
       } catch (err) {
         setError(err instanceof Error ? err.message : 'Ошибка загрузки линий');
@@ -37,14 +33,10 @@ export function useDrawingWithRealtime(sessionId: string, currentParticipantId: 
   // Подписка на realtime изменения
   useEffect(() => {
     if (!sessionId) {
-      console.log('🎨 Нет sessionId для подписки на realtime');
       return;
     }
 
-    console.log('🎨 Подписываюсь на realtime для сессии:', sessionId);
-
     const unsubscribe = drawingApi.subscribeToDrawingLines(sessionId, (updatedLines) => {
-      console.log('🎨 Получены обновленные линии через realtime:', updatedLines.length);
       setLines(updatedLines);
     });
 
@@ -54,22 +46,14 @@ export function useDrawingWithRealtime(sessionId: string, currentParticipantId: 
   // Создание новой линии
   const createLine = useCallback(async (lineData: CreateDrawingLineData) => {
     if (!sessionId || !currentParticipantId) {
-      console.log('🎨 Не могу создать линию: sessionId =', sessionId, 'participantId =', currentParticipantId);
       return;
     }
-
-    console.log('🎨 Создаю линию с данными:', {
-      points: lineData.points.length,
-      color: lineData.color,
-      createdBy: currentParticipantId
-    });
 
     try {
       const result = await drawingApi.createDrawingLine(sessionId, {
         ...lineData,
         createdBy: currentParticipantId,
       });
-      console.log('🎨 Линия создана в БД:', result.id);
       // Линия будет добавлена через realtime подписку
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Ошибка создания линии');
@@ -88,11 +72,49 @@ export function useDrawingWithRealtime(sessionId: string, currentParticipantId: 
     }
   }, []);
 
+  // Удаление последней своей линии
+  const undoLastLine = useCallback(async () => {
+    if (!currentParticipantId) {
+      return;
+    }
+
+    // Находим последнюю линию текущего пользователя
+    const myLines = lines
+      .filter(line => line.createdBy === currentParticipantId)
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+
+    if (myLines.length === 0) {
+      return;
+    }
+
+    const lastLine = myLines[0];
+    try {
+      // Оптимистично удаляем из UI сразу
+      setLines(prev => prev.filter(line => line.id !== lastLine.id));
+      
+      // Отправляем запрос на сервер
+      await drawingApi.deleteDrawingLine(lastLine.id);
+      } catch (err) {
+      // В случае ошибки, возвращаем линию обратно
+      setLines(prev => [...prev, lastLine].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()));
+      setError(err instanceof Error ? err.message : 'Ошибка удаления последней линии');
+      console.error('🎨 Ошибка удаления последней линии:', err);
+    }
+  }, [lines, currentParticipantId]);
+
+  // Проверка, есть ли линии для удаления
+  const canUndoLine = useCallback(() => {
+    if (!currentParticipantId) return false;
+    return lines.some(line => line.createdBy === currentParticipantId);
+  }, [lines, currentParticipantId]);
+
   return {
     lines,
     loading,
     error,
     createLine,
     deleteLine,
+    undoLastLine,
+    canUndoLine: canUndoLine(),
   };
 }

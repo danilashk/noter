@@ -31,7 +31,6 @@ export function useRealtimeSync({ sessionId, userId, userName, userColor }: UseR
 
     const delay = Math.min(1000 * Math.pow(2, reconnectAttempts), 30000)
     reconnectTimeoutRef.current = setTimeout(() => {
-      console.log(`Переподключение... Попытка ${reconnectAttempts + 1}`)
       setReconnectAttempts(prev => prev + 1)
       
       if (channelRef.current) {
@@ -64,7 +63,6 @@ export function useRealtimeSync({ sessionId, userId, userName, userColor }: UseR
         filter: `session_id=eq.${sessionId}`
       }, (payload) => {
         const newCard = payload.new as Card
-        console.log('Card created:', newCard)
         setCards(prev => [...prev.filter(c => c.id !== newCard.id), newCard])
       })
       .on('postgres_changes', {
@@ -74,7 +72,6 @@ export function useRealtimeSync({ sessionId, userId, userName, userColor }: UseR
         filter: `session_id=eq.${sessionId}`
       }, (payload) => {
         const updatedCard = payload.new as Card
-        console.log('Card updated:', updatedCard)
         setCards(prev => prev.map(card => 
           card.id === updatedCard.id ? updatedCard : card
         ))
@@ -86,22 +83,18 @@ export function useRealtimeSync({ sessionId, userId, userName, userColor }: UseR
         filter: `session_id=eq.${sessionId}`
       }, (payload) => {
         const deletedCard = payload.old as Card
-        console.log('Card deleted:', deletedCard)
         setCards(prev => prev.filter(card => card.id !== deletedCard.id))
       })
 
       // Подписка на presence события
       .on('presence', { event: 'sync' }, () => {
         const presenceState = channel.presenceState()
-        console.log('Presence sync:', presenceState)
         setPresenceUsers(presenceState)
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        console.log('User joined:', key, newPresences)
         setPresenceUsers(channel.presenceState())
       })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        console.log('User left:', key, leftPresences)
         setPresenceUsers(channel.presenceState())
         
         // Удаляем курсор и статус печати ушедшего пользователя
@@ -160,8 +153,6 @@ export function useRealtimeSync({ sessionId, userId, userName, userColor }: UseR
 
     // Подключение к каналу
     channel.subscribe((status) => {
-      console.log('Channel status:', status)
-      
       if (status === 'SUBSCRIBED') {
         setIsConnected(true)
         setConnectionError(null)

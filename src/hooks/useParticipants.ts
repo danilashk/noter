@@ -76,7 +76,6 @@ export function useParticipants(sessionId: string): UseParticipantsState & UsePa
         // Получаем стабильный user fingerprint
         const fingerprint = await getStableUserId();
         setUserFingerprint(fingerprint);
-        console.log('🔍 User fingerprint:', getShortUserId(fingerprint));
         
         // Ищем существующего участника в этой сессии по fingerprint
         try {
@@ -89,10 +88,8 @@ export function useParticipants(sessionId: string): UseParticipantsState & UsePa
             // Восстанавливаем участника и обновляем активность
             await participantsApi.updateActivity(myParticipant.id);
             setCurrentParticipant(myParticipant);
-            console.log('🎯 Восстановлен участник:', myParticipant.name);
-          } else {
-            console.log('👋 Новый пользователь в этой сессии');
-          }
+            } else {
+            }
         } catch (error) {
           console.error('Ошибка поиска участника по fingerprint:', error);
         }
@@ -152,8 +149,6 @@ export function useParticipants(sessionId: string): UseParticipantsState & UsePa
       const participant = await response.json();
       setCurrentParticipant(participant);
       
-      console.log(participant.isNew ? '🆕 Создан новый участник' : '🔄 Восстановлен участник:', name);
-      
       // Обновляем списки участников
       await fetchParticipants();
       
@@ -201,8 +196,6 @@ export function useParticipants(sessionId: string): UseParticipantsState & UsePa
       // Удаляем участника из сессии
       await participantsApi.removeParticipant(currentParticipant.id);
       setCurrentParticipant(null);
-      
-      console.log('👋 Пользователь покинул сессию');
       
       // Обновляем списки
       await fetchParticipants();

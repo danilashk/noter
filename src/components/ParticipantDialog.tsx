@@ -24,9 +24,10 @@ interface ParticipantDialogProps {
   isOpen: boolean;
   onJoin: (name: string) => Promise<void>;
   sessionTitle?: string;
+  isNewSession?: boolean;
 }
 
-export function ParticipantDialog({ isOpen, onJoin, sessionTitle }: ParticipantDialogProps) {
+export function ParticipantDialog({ isOpen, onJoin, sessionTitle, isNewSession = false }: ParticipantDialogProps) {
   const [name, setName] = useState('');
   const [isJoining, setIsJoining] = useState(false);
 
@@ -56,23 +57,19 @@ export function ParticipantDialog({ isOpen, onJoin, sessionTitle }: ParticipantD
           {/* Header */}
           <div className="text-center mb-6">
             <div className="w-16 h-16 mx-auto mb-4 bg-primary/20 rounded-full flex items-center justify-center">
-              <UsersIcon className="w-8 h-8 text-primary" />
+              {isNewSession ? (
+                <SparklesIcon className="w-8 h-8 text-primary" />
+              ) : (
+                <UsersIcon className="w-8 h-8 text-primary" />
+              )}
             </div>
             
             <h2 className="text-2xl font-semibold mb-2">
-              Присоединиться к сессии
+              {isNewSession ? 'Создание новой доски' : 'Присоединиться к доске'}
             </h2>
             
-            {sessionTitle && (
-              <Badge variant="secondary" className="mb-2">
-                <SparklesIcon className="w-3 h-3 mr-1" />
-                {sessionTitle}
-              </Badge>
-            )}
-            
             <p className="text-sm text-muted-foreground">
-              Введите ваше имя для участия в brainstorming.<br/>
-              Цвет будет назначен автоматически
+              Ваш цвет будет назначен автоматически
             </p>
           </div>
           
@@ -99,23 +96,20 @@ export function ParticipantDialog({ isOpen, onJoin, sessionTitle }: ParticipantD
             <button
               onClick={handleJoin}
               disabled={!name.trim() || isJoining}
-              className="w-full btn-primary inline-flex items-center justify-center gap-2 text-lg px-6 py-3"
+              className="w-full btn-primary text-lg px-6 py-3 text-center"
             >
               {isJoining ? (
-                <>
-                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                  Присоединяемся...
-                </>
+                isNewSession ? 'Создаем доску...' : 'Присоединяемся...'
               ) : (
-                <>
-                  <ArrowRightOnRectangleIcon className="w-4 h-4" />
-                  Присоединиться к команде
-                </>
+                isNewSession ? 'Создать доску' : 'Присоединиться к команде'
               )}
             </button>
             
             <p className="text-xs text-muted-foreground/60 text-center mt-3">
-              Начните создавать идеи вместе в реальном времени
+              {isNewSession 
+                ? 'Штурмуйте идеи в реальном времени с коллегами'
+                : 'Начните создавать идеи вместе в реальном времени'
+              }
             </p>
           </div>
         </div>

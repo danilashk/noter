@@ -10,6 +10,7 @@ DROP TABLE IF EXISTS sessions;
 CREATE TABLE sessions (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT now(),
+    last_activity TIMESTAMP WITH TIME ZONE DEFAULT now(),
     title TEXT,
     description TEXT
 );
@@ -79,12 +80,68 @@ $$ language 'plpgsql';
 CREATE TRIGGER update_cards_updated_at BEFORE UPDATE ON cards
     FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+-- Функция для обновления last_activity в sessions при любой активности
+CREATE OR REPLACE FUNCTION update_session_activity()
+RETURNS TRIGGER AS $$
+BEGIN
+    -- Обновляем last_activity для сессии при любых изменениях в карточках или участниках
+    UPDATE sessions 
+    SET last_activity = now() 
+    WHERE id = COALESCE(NEW.session_id, OLD.session_id);
+    
+    RETURN COALESCE(NEW, OLD);
+END;
+$$ language 'plpgsql';
+
+-- Триггеры для отслеживания активности на доске
+-- При любых операциях с карточками обновляем активность сессии
+CREATE TRIGGER update_session_activity_on_cards_insert
+    AFTER INSERT ON cards
+    FOR EACH ROW EXECUTE FUNCTION update_session_activity();
+
+CREATE TRIGGER update_session_activity_on_cards_update
+    AFTER UPDATE ON cards
+    FOR EACH ROW EXECUTE FUNCTION update_session_activity();
+
+CREATE TRIGGER update_session_activity_on_cards_delete
+    AFTER DELETE ON cards
+    FOR EACH ROW EXECUTE FUNCTION update_session_activity();
+
+-- При присоединении/активности участников обновляем активность сессии  
+CREATE TRIGGER update_session_activity_on_participants_insert
+    AFTER INSERT ON participants
+    FOR EACH ROW EXECUTE FUNCTION update_session_activity();
+
+CREATE TRIGGER update_session_activity_on_participants_update
+    AFTER UPDATE ON participants
+    FOR EACH ROW EXECUTE FUNCTION update_session_activity();
+
 -- Функция для очистки неактивных участников
 CREATE OR REPLACE FUNCTION cleanup_inactive_participants()
 RETURNS void AS $$
 BEGIN
     DELETE FROM participants 
     WHERE last_seen < now() - interval '1 hour';
+END;
+$$ language 'plpgsql';
+
+-- Функция для автоудаления неактивных досок (24 часа без активности)
+CREATE OR REPLACE FUNCTION cleanup_inactive_sessions()
+RETURNS TABLE(deleted_sessions_count bigint) AS $$
+DECLARE
+    deleted_count bigint;
+BEGIN
+    -- Удаляем сессии без активности более 24 часов
+    -- Каскадное удаление автоматически удалит все связанные карточки, участников и т.д.
+    DELETE FROM sessions 
+    WHERE last_activity < now() - interval '24 hours';
+    
+    GET DIAGNOSTICS deleted_count = ROW_COUNT;
+    
+    -- Логируем результат (в продакшене можно убрать)
+    RAISE NOTICE 'Cleanup: deleted % inactive sessions older than 24 hours', deleted_count;
+    
+    RETURN QUERY SELECT deleted_count;
 END;
 $$ language 'plpgsql';
 

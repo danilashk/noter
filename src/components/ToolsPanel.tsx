@@ -5,6 +5,7 @@ import {
   PlusIcon, 
   PencilIcon, 
   MinusIcon,
+  ArrowUturnLeftIcon,
 } from '@heroicons/react/24/outline';
 
 interface ToolsPanelProps {
@@ -14,6 +15,9 @@ interface ToolsPanelProps {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onResetZoom: () => void;
+  onUndoLastLine: () => void;
+  canUndoLine: boolean;
+  isVisible?: boolean;
 }
 
 export function ToolsPanel({ 
@@ -22,17 +26,26 @@ export function ToolsPanel({
   scale,
   onZoomIn,
   onZoomOut,
-  onResetZoom
+  onResetZoom,
+  onUndoLastLine,
+  canUndoLine,
+  isVisible = true
 }: ToolsPanelProps) {
   return (
-    <div className="fixed bottom-6 right-6 z-50">
-      <div className="flex flex-col gap-2">
-        {/* Zoom Controls */}
+    <>
+      {/* Zoom Controls - теперь слева, скрываются если не начат brainstorm */}
+      <div 
+        className={`fixed bottom-6 left-6 z-50 transition-all duration-500 ease-out ${
+          isVisible 
+            ? 'opacity-100 translate-x-0' 
+            : 'opacity-0 -translate-x-4 pointer-events-none'
+        }`}
+      >
         <div className="glass-effect border border-border/20 rounded-lg p-2 backdrop-blur-sm">
           <div className="flex flex-col items-center gap-2">
             <button
               onClick={onZoomIn}
-              className="w-10 h-10 rounded-md hover:bg-muted/50 flex items-center justify-center transition-colors"
+              className="w-10 h-10 rounded-md hover:bg-muted/50 flex items-center justify-center transition-colors cursor-pointer"
               title="Приблизить"
             >
               <PlusIcon className="w-4 h-4" />
@@ -40,7 +53,7 @@ export function ToolsPanel({
             
             <button
               onClick={onResetZoom}
-              className="text-xs px-2 py-1 rounded text-muted-foreground hover:text-foreground transition-colors min-w-[3rem]"
+              className="text-xs px-2 py-1 rounded text-muted-foreground hover:text-foreground transition-colors min-w-[3rem] cursor-pointer"
               title="Сбросить масштаб"
             >
               {Math.round(scale * 100)}%
@@ -48,21 +61,43 @@ export function ToolsPanel({
             
             <button
               onClick={onZoomOut}
-              className="w-10 h-10 rounded-md hover:bg-muted/50 flex items-center justify-center transition-colors"
+              className="w-10 h-10 rounded-md hover:bg-muted/50 flex items-center justify-center transition-colors cursor-pointer"
               title="Отдалить"
             >
               <MinusIcon className="w-4 h-4" />
             </button>
           </div>
         </div>
+      </div>
 
-        {/* Main Tools */}
+      {/* Drawing Tools - остаются справа, с плавным появлением */}
+      <div 
+        className={`fixed bottom-6 right-6 z-50 transition-all duration-500 ease-out ${
+          isVisible 
+            ? 'opacity-100 translate-y-0' 
+            : 'opacity-0 translate-y-4 pointer-events-none'
+        }`}
+      >
         <div className="glass-effect border border-border/20 rounded-lg p-2 backdrop-blur-sm">
           <div className="flex flex-col gap-2">
+            {/* Undo Line Tool */}
+            <button
+              onClick={onUndoLastLine}
+              disabled={!canUndoLine}
+              className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all ${
+                canUndoLine 
+                  ? 'hover:bg-muted/50 text-foreground cursor-pointer' 
+                  : 'text-muted-foreground cursor-not-allowed opacity-50'
+              }`}
+              title="Отменить последнюю линию"
+            >
+              <ArrowUturnLeftIcon className="w-5 h-5" />
+            </button>
+            
             {/* Drawing Tool */}
             <button
               onClick={onToggleDrawingMode}
-              className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all relative ${
+              className={`w-12 h-12 rounded-lg flex items-center justify-center transition-all relative cursor-pointer ${
                 isDrawingMode 
                   ? 'text-white shadow-lg ring-2' 
                   : 'hover:bg-muted/50'
@@ -84,6 +119,6 @@ export function ToolsPanel({
           </div>
         </div>
       </div>
-    </div>
+    </>
   );
 }

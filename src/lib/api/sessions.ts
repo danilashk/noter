@@ -6,17 +6,11 @@ export const sessionsApi = {
    * Получить сессию по ID
    */
   async getSession(sessionId: string): Promise<Session | null> {
-    console.log('Attempting to fetch session:', sessionId);
-    console.log('Supabase URL:', process.env.NEXT_PUBLIC_SUPABASE_URL);
-    console.log('Supabase Key exists:', !!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY);
-    
     const { data, error } = await supabase
       .from('sessions')
       .select('*')
       .eq('id', sessionId)
       .single();
-
-    console.log('Supabase response:', { data, error });
 
     if (error) {
       console.error('Supabase error:', error);
@@ -31,7 +25,9 @@ export const sessionsApi = {
       id: data.id,
       title: data.title,
       createdAt: new Date(data.created_at),
+      lastActivity: new Date(data.last_activity),
       createdBy: data.created_by,
+      hasStartedBrainstorm: data.has_started_brainstorm,
     };
   },
 
@@ -56,17 +52,23 @@ export const sessionsApi = {
       id: data.id,
       title: data.title,
       createdAt: new Date(data.created_at),
+      lastActivity: new Date(data.last_activity),
       createdBy: data.created_by,
+      hasStartedBrainstorm: data.has_started_brainstorm,
     };
   },
 
   /**
    * Обновить сессию
    */
-  async updateSession(sessionId: string, updates: { title?: string }): Promise<Session> {
+  async updateSession(sessionId: string, updates: { title?: string; hasStartedBrainstorm?: boolean }): Promise<Session> {
+    const updateData: any = {};
+    if (updates.title !== undefined) updateData.title = updates.title;
+    if (updates.hasStartedBrainstorm !== undefined) updateData.has_started_brainstorm = updates.hasStartedBrainstorm;
+
     const { data, error } = await supabase
       .from('sessions')
-      .update(updates)
+      .update(updateData)
       .eq('id', sessionId)
       .select()
       .single();
@@ -79,7 +81,9 @@ export const sessionsApi = {
       id: data.id,
       title: data.title,
       createdAt: new Date(data.created_at),
+      lastActivity: new Date(data.last_activity),
       createdBy: data.created_by,
+      hasStartedBrainstorm: data.has_started_brainstorm,
     };
   },
 
@@ -107,7 +111,9 @@ export const sessionsApi = {
       id: data.id,
       title: data.title,
       createdAt: new Date(data.created_at),
+      lastActivity: new Date(data.last_activity),
       createdBy: data.created_by,
+      hasStartedBrainstorm: data.has_started_brainstorm,
     };
   },
 
@@ -115,21 +121,33 @@ export const sessionsApi = {
    * Получить или создать сессию
    */
   async getOrCreateSession(sessionId: string, defaultTitle: string = 'Новая сессия'): Promise<Session> {
-    console.log('getOrCreateSession called with sessionId:', sessionId);
-    
     // Сначала пытаемся получить существующую сессию
     const existingSession = await this.getSession(sessionId);
     
     if (existingSession) {
-      console.log('Found existing session:', existingSession);
       return existingSession;
     }
 
-    console.log('Session not found, creating new session...');
     // Если сессии нет, создаем новую с указанным ID
     return this.createSessionWithId(sessionId, {
       title: defaultTitle,
       createdBy: null, // Пока без авторизации
     });
+  },
+
+  /**
+   * Очистка неактивных сессий (старше 24 часов)
+   */
+  async cleanupInactiveSessions(): Promise<number> {
+    const { data, error } = await supabase
+      .rpc('cleanup_inactive_sessions');
+
+    if (error) {
+      console.error('Ошибка очистки неактивных сессий:', error);
+      throw new Error(`Ошибка очистки сессий: ${error.message}`);
+    }
+
+    const deletedCount = data?.[0]?.deleted_sessions_count || 0;
+    return deletedCount;
   },
 };

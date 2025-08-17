@@ -185,7 +185,7 @@ export function SimpleCard({
       ref={cardRef}
       className={`absolute bg-yellow-100 border-2 border-yellow-300 rounded-lg shadow-md min-w-[200px] min-h-[120px] cursor-pointer group transition-all duration-200 ${
         isDragging ? 'z-50 shadow-xl scale-105' : 'z-10'
-      } ${isEditing ? 'ring-2 ring-blue-400' : ''}`}
+      } ${isEditing ? 'ring-2 ring-blue-400' : 'ring-0'}`}
       style={{
         left: card.position_x,
         top: card.position_y

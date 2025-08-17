@@ -89,10 +89,8 @@ export function useCursorBroadcast(sessionId: string, currentParticipant: Partic
         }
       })
       .on('presence', { event: 'join' }, ({ newPresences }) => {
-        console.log('Cursor participant joined:', newPresences)
-      })
+        })
       .on('presence', { event: 'leave' }, ({ leftPresences }) => {
-        console.log('Cursor participant left:', leftPresences)
         setCursors(prev => {
           const updated = { ...prev }
           leftPresences.forEach((presence: any) => {

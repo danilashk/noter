@@ -20,6 +20,7 @@ export const cardsApi = {
       id: card.id,
       content: card.content,
       position: { x: card.position_x, y: card.position_y },
+      height: card.height || 120,
       createdAt: new Date(card.created_at),
       updatedAt: new Date(card.updated_at),
       createdBy: card.created_by,
@@ -37,6 +38,7 @@ export const cardsApi = {
         content: cardData.content,
         position_x: cardData.position.x,
         position_y: cardData.position.y,
+        height: cardData.height || 120,
         created_by: cardData.createdBy,
       })
       .select()
@@ -50,6 +52,7 @@ export const cardsApi = {
       id: data.id,
       content: data.content,
       position: { x: data.position_x, y: data.position_y },
+      height: data.height || 120,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
       createdBy: data.created_by,
@@ -70,6 +73,10 @@ export const cardsApi = {
       updateData.position_x = updates.position.x;
       updateData.position_y = updates.position.y;
     }
+    
+    if (updates.height !== undefined) {
+      updateData.height = updates.height;
+    }
 
     updateData.updated_at = new Date().toISOString();
 
@@ -88,6 +95,7 @@ export const cardsApi = {
       id: data.id,
       content: data.content,
       position: { x: data.position_x, y: data.position_y },
+      height: data.height || 120,
       createdAt: new Date(data.created_at),
       updatedAt: new Date(data.updated_at),
       createdBy: data.created_by,

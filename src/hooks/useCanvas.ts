@@ -26,7 +26,6 @@ export function useCanvas() {
   const toggleDrawingMode = useCallback(() => {
     setCanvasState(prev => {
       const newMode = !prev.isDrawingMode;
-      console.log('Toggling drawing mode from', prev.isDrawingMode, 'to', newMode);
       return { ...prev, isDrawingMode: newMode };
     });
   }, []);

@@ -35,11 +35,9 @@ export function useSimplePresence(sessionId: string, currentUser: any) {
         setCursors(activeCursors)
       })
       .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        console.log('Cursor joined:', newPresences)
-      })
+        })
       .on('presence', { event: 'leave' }, ({ key, leftPresences }) => {
-        console.log('Cursor left:', leftPresences)
-      })
+        })
       .subscribe()
 
     setChannel(presenceChannel)

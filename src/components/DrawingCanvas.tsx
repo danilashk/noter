@@ -50,8 +50,6 @@ export function DrawingCanvas({
   const [points, setPoints] = useState<Point[]>([]); // Для текущей линии
   const [currentLineId, setCurrentLineId] = useState<string | null>(null); // ID текущей рисуемой линии
 
-
-
   // Функция для рисования плавной линии через несколько точек
   const drawSmoothLine = useCallback((ctx: CanvasRenderingContext2D, points: Point[], color: string) => {
     if (points.length < 2) return;
