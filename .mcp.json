@@ -1,0 +1,39 @@
+{
+  "mcpServers": {
+    "browsermcp": {
+      "type": "stdio",
+      "command": "npx",
+      "args": [
+        "@browsermcp/mcp@latest"
+      ],
+      "env": {}
+    },
+    "perplexity-mcp": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "server-perplexity-ask"
+      ],
+      "env": {
+        "PERPLEXITY_API_KEY": "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"
+      }
+    },
+    "supabase": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@supabase/mcp-server-supabase@latest",
+        "--project-ref=pkznzjcalbfgpeahyzzg",
+        "--features=database,debug,functions,docs"
+      ],
+      "env": {
+        "SUPABASE_ACCESS_TOKEN": "sbp_9fa532c37abeb3c63506267771ee68e2af345bfd"
+      }
+    },
+
+    "jetbrains": {
+      "command": "npx",
+      "args": ["-y", "@jetbrains/mcp-proxy"]
+    }
+  }
+}

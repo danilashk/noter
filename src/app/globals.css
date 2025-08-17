@@ -1,26 +1,239 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
+@layer base {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    /* Deep black Linear-inspired palette */
+    --background: 220 13% 4%;           /* #08090a - Deep black */
+    --foreground: 0 0% 100%;            /* #ffffff - Pure white text */
+    --card: 220 10% 7%;                 /* #0f1011 - Slightly lighter black */
+    --card-foreground: 0 0% 100%;       /* #ffffff */
+    --popover: 220 10% 7%;              /* #0f1011 */
+    --popover-foreground: 0 0% 100%;    /* #ffffff */
+    --primary: 158 83% 41%;             /* #00D2A0 - Linear green accent */
+    --primary-foreground: 0 0% 100%;    /* #ffffff */
+    --secondary: 220 8% 12%;            /* #1a1b1e - Secondary surface */
+    --secondary-foreground: 210 20% 70%; /* #9ca3af */
+    --muted: 220 8% 12%;                /* #1a1b1e */
+    --muted-foreground: 215 16% 47%;    /* #6b7280 - Muted text */
+    --accent: 158 83% 41%;              /* #00D2A0 */
+    --accent-foreground: 0 0% 100%;     /* #ffffff */
+    --destructive: 0 84% 60%;           /* #ef4444 - Red error */
+    --destructive-foreground: 0 0% 100%; /* #ffffff */
+    --border: 220 8% 15%;               /* #202225 - Subtle borders */
+    --input: 220 8% 12%;                /* #1a1b1e - Input background */
+    --ring: 158 83% 41%;                /* #00D2A0 */
+    --radius: 0.5rem;
+    
+    /* Additional Linear-style variables */
+    --text-tertiary: 215 12% 40%;      /* #525861 - Very muted text */
+    --success: 142 71% 45%;             /* #22c55e - Success green */
+    --warning: 38 92% 50%;              /* #f59e0b - Warning orange */
+    --info: 221 83% 53%;                /* #3b82f6 - Info blue */
   }
 }
 
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+@layer base {
+  * {
+    border-color: hsl(var(--border));
+  }
+  body {
+    background-color: hsl(var(--background));
+    color: hsl(var(--foreground));
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+@layer components {
+  /* Deep black Linear background */
+  .gradient-bg {
+    background: hsl(var(--background));
+    background-image: radial-gradient(circle at 20% 80%, hsl(var(--primary) / 0.03) 0%, transparent 50%),
+                      radial-gradient(circle at 80% 20%, hsl(var(--accent) / 0.02) 0%, transparent 50%);
+  }
+  
+  /* Deep black Linear cards */
+  .glass-effect {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.5);
+  }
+  
+  /* Linear-style accent glow */
+  .accent-glow {
+    box-shadow: 0 0 20px hsl(var(--primary) / 0.2);
+  }
+  
+  /* Linear-style card hover */
+  .idea-card {
+    @apply transition-all duration-200 ease-out;
+    border-radius: 8px;
+  }
+  
+  .idea-card:hover {
+    background-color: hsl(var(--card));
+    border-color: hsl(var(--border));
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    transform: translateY(-1px);
+  }
+  
+  /* Linear-style primary button */
+  .btn-primary {
+    background-color: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    @apply font-medium rounded-lg px-4 py-2;
+    @apply transition-all duration-150 ease-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    focus-ring-color: hsl(var(--primary));
+    focus-ring-offset-color: hsl(var(--background));
+    border-radius: 8px;
+    min-height: 36px;
+  }
+  
+  .btn-primary:hover {
+    @apply brightness-110;
+    box-shadow: 0 2px 8px hsl(var(--primary) / 0.3);
+  }
+  
+  .btn-primary:active {
+    @apply brightness-90;
+    transform: translateY(1px);
+  }
+  
+  /* Linear-style secondary button */
+  .btn-secondary {
+    @apply bg-transparent font-medium rounded-lg px-4 py-2;
+    @apply transition-all duration-150 ease-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--muted-foreground));
+    focus-ring-color: hsl(var(--primary));
+    focus-ring-offset-color: hsl(var(--background));
+    border-radius: 8px;
+    min-height: 36px;
+  }
+  
+  .btn-secondary:hover {
+    border-color: hsl(var(--primary));
+    color: hsl(var(--primary));
+  }
+  
+  /* Linear-style ghost button */
+  .btn-ghost {
+    @apply bg-transparent font-medium rounded-lg px-3 py-2;
+    @apply transition-all duration-150 ease-out;
+    color: hsl(var(--muted-foreground));
+    border-radius: 8px;
+  }
+  
+  .btn-ghost:hover {
+    color: hsl(var(--primary));
+    background-color: hsl(var(--primary) / 0.1);
+  }
+}
+
+@layer utilities {
+  /* Linear-style animations */
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  
+  @keyframes slide-up {
+    from {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+  }
+  
+  .animate-float-up {
+    animation: fade-in 0.25s ease-out;
+  }
+  
+  .animate-slide-up {
+    animation: slide-up 0.2s ease-out;
+  }
+  
+  /* Linear-style input */
+  .input-field {
+    background-color: hsl(var(--card));
+    border: 1px solid hsl(var(--border));
+    color: hsl(var(--foreground));
+    @apply px-4 py-2 rounded-lg;
+    @apply focus:outline-none transition-all duration-150;
+    border-radius: 8px;
+    min-height: 36px;
+  }
+  
+  .input-field::placeholder {
+    color: hsl(var(--muted-foreground));
+  }
+  
+  .input-field:focus {
+    border-color: hsl(var(--primary));
+    box-shadow: 0 0 0 1px hsl(var(--primary));
+  }
+  
+  /* Typography utilities */
+  .text-primary {
+    color: hsl(var(--foreground));
+  }
+  
+  .text-secondary {
+    color: hsl(var(--muted-foreground));
+  }
+  
+  .text-tertiary {
+    color: hsl(var(--text-tertiary));
+  }
+  
+  /* Пользовательские стили для цветовой тематизации */
+  .user-primary-bg {
+    background-color: var(--user-primary);
+  }
+  
+  .user-primary-text {
+    color: var(--user-primary);
+  }
+  
+  .user-primary-border {
+    border-color: var(--user-primary);
+  }
+  
+  .user-primary-hover:hover {
+    background-color: var(--user-primary-hover);
+  }
+  
+  .user-primary-active:active {
+    background-color: var(--user-primary-active);
+  }
+  
+  /* Стили для кнопок с пользовательским цветом */
+  .btn-user-primary {
+    background-color: var(--user-primary);
+    color: white;
+    @apply font-medium rounded-lg px-4 py-2;
+    @apply transition-all duration-150 ease-out;
+    @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+    border-radius: 8px;
+    min-height: 36px;
+  }
+  
+  .btn-user-primary:hover {
+    filter: brightness(1.1);
+  }
+  
+  .btn-user-primary:active {
+    filter: brightness(0.9);
+    transform: translateY(1px);
+  }
 }

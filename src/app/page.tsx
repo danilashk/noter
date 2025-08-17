@@ -1,103 +1,129 @@
-import Image from "next/image";
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+import Link from "next/link"
+import { 
+  ArrowRightIcon,
+  BoltIcon,
+  UsersIcon,
+  CpuChipIcon,
+  DevicePhoneMobileIcon,
+  RocketLaunchIcon,
+  SparklesIcon,
+  TrophyIcon
+} from "@heroicons/react/24/outline"
 
-export default function Home() {
+export default function LandingPage() {
   return (
-    <div className="font-sans grid grid-rows-[20px_1fr_20px] items-center justify-items-center min-h-screen p-8 pb-20 gap-16 sm:p-20">
-      <main className="flex flex-col gap-[32px] row-start-2 items-center sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={180}
-          height={38}
-          priority
-        />
-        <ol className="font-mono list-inside list-decimal text-sm/6 text-center sm:text-left">
-          <li className="mb-2 tracking-[-.01em]">
-            Get started by editing{" "}
-            <code className="bg-black/[.05] dark:bg-white/[.06] font-mono font-semibold px-1 py-0.5 rounded">
-              src/app/page.tsx
-            </code>
-            .
-          </li>
-          <li className="tracking-[-.01em]">
-            Save and see your changes instantly.
-          </li>
-        </ol>
-
-        <div className="flex gap-4 items-center flex-col sm:flex-row">
-          <a
-            className="rounded-full border border-solid border-transparent transition-colors flex items-center justify-center bg-foreground text-background gap-2 hover:bg-[#383838] dark:hover:bg-[#ccc] font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 sm:w-auto"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={20}
-              height={20}
-            />
-            Deploy now
-          </a>
-          <a
-            className="rounded-full border border-solid border-black/[.08] dark:border-white/[.145] transition-colors flex items-center justify-center hover:bg-[#f2f2f2] dark:hover:bg-[#1a1a1a] hover:border-transparent font-medium text-sm sm:text-base h-10 sm:h-12 px-4 sm:px-5 w-full sm:w-auto md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Read our docs
-          </a>
+    <div className="min-h-screen gradient-bg">
+      <div className="container mx-auto px-4 py-16">
+        {/* Hero Section */}
+        <div className="text-center max-w-4xl mx-auto mb-20 animate-slide-up">
+          <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-8">
+            <SparklesIcon className="w-4 h-4 text-primary" />
+            <span className="text-sm font-medium text-primary">Новый способ генерировать идеи</span>
+          </div>
+          
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 text-foreground">
+            Live Brainstorm
+          </h1>
+          
+          <p className="text-lg text-muted-foreground mb-8 leading-relaxed max-w-2xl mx-auto">
+            Интерактивная realtime доска для мозгового штурма с AI-ассистентом.
+            Создавайте идеи вместе в реальном времени.
+          </p>
+          
+          <Link href="/board/new">
+            <button className="btn-primary group inline-flex items-center gap-2 text-lg px-6 py-3">
+              Начать сессию
+              <ArrowRightIcon className="w-5 h-5 transition-transform group-hover:translate-x-1" />
+            </button>
+          </Link>
         </div>
-      </main>
-      <footer className="row-start-3 flex gap-[24px] flex-wrap items-center justify-center">
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/file.svg"
-            alt="File icon"
-            width={16}
-            height={16}
-          />
-          Learn
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/window.svg"
-            alt="Window icon"
-            width={16}
-            height={16}
-          />
-          Examples
-        </a>
-        <a
-          className="flex items-center gap-2 hover:underline hover:underline-offset-4"
-          href="https://nextjs.org?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          <Image
-            aria-hidden
-            src="/globe.svg"
-            alt="Globe icon"
-            width={16}
-            height={16}
-          />
-          Go to nextjs.org →
-        </a>
-      </footer>
+
+        {/* Features Grid */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6 max-w-6xl mx-auto mb-16">
+          <div className="glass-effect idea-card p-6 animate-float-up">
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+              <BoltIcon className="h-5 w-5 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Instant Start</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Никакой регистрации - просто открыл и создал сессию. Поделился ссылкой - и команда уже работает.
+            </p>
+          </div>
+
+          <div className="glass-effect idea-card p-6 animate-float-up" style={{ animationDelay: "0.1s" }}>
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+              <UsersIcon className="h-5 w-5 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Realtime Коллаборация</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Live курсоры, мгновенная синхронизация, присутствие участников и typing индикаторы.
+            </p>
+          </div>
+
+          <div className="glass-effect idea-card p-6 animate-float-up" style={{ animationDelay: "0.2s" }}>
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+              <CpuChipIcon className="h-5 w-5 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">AI-Ассистент</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Одним кликом улучшай свои идеи через Perplexity. Умные предложения и контекстные улучшения.
+            </p>
+          </div>
+
+          <div className="glass-effect idea-card p-6 animate-float-up" style={{ animationDelay: "0.3s" }}>
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+              <DevicePhoneMobileIcon className="h-5 w-5 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Современный UX</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Адаптивный дизайн, плавные анимации, темная тема и интуитивные взаимодействия.
+            </p>
+          </div>
+
+          <div className="glass-effect idea-card p-6 animate-float-up" style={{ animationDelay: "0.4s" }}>
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+              <TrophyIcon className="h-5 w-5 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Достижения</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Отслеживайте прогресс, зарабатывайте достижения и мотивируйте команду к новым идеям.
+            </p>
+          </div>
+
+          <div className="glass-effect idea-card p-6 animate-float-up" style={{ animationDelay: "0.5s" }}>
+            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+              <RocketLaunchIcon className="h-5 w-5 text-primary" />
+            </div>
+            <h3 className="text-lg font-semibold text-foreground mb-2">Быстро</h3>
+            <p className="text-muted-foreground text-sm leading-relaxed">
+              Next.js 15, Supabase Realtime, мгновенная синхронизация между участниками.
+            </p>
+          </div>
+        </div>
+
+        {/* CTA Section */}
+        <div className="max-w-2xl mx-auto glass-effect p-12 text-center">
+          <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-6">
+            <SparklesIcon className="w-6 h-6 text-primary" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground mb-4">
+            Готовы начать мозговой штурм?
+          </h2>
+          <p className="text-muted-foreground mb-8 leading-relaxed">
+            Создайте сессию за секунду и пригласите команду к творчеству
+          </p>
+          
+          <Link href="/board/new">
+            <button className="btn-secondary group inline-flex items-center gap-2">
+              Создать доску
+              <ArrowRightIcon className="w-4 h-4 transition-transform group-hover:translate-x-1" />
+            </button>
+          </Link>
+        </div>
+      </div>
     </div>
-  );
+  )
 }
