@@ -6,6 +6,7 @@ import {
   PencilIcon, 
   MinusIcon,
   ArrowUturnLeftIcon,
+  InformationCircleIcon,
 } from '@heroicons/react/24/outline';
 
 interface ToolsPanelProps {
@@ -116,6 +117,28 @@ export function ToolsPanel({
                 />
               )}
             </button>
+            
+            {/* Information Tool */}
+            <div className="relative group">
+              <button
+                className="w-12 h-12 rounded-lg flex items-center justify-center transition-all hover:bg-muted/50 cursor-pointer"
+                title="Подсказки по использованию"
+              >
+                <InformationCircleIcon className="w-5 h-5" />
+              </button>
+              
+              {/* Tooltip */}
+              <div className="absolute bottom-0 right-full mr-3 w-64 p-3 bg-card/95 backdrop-blur-sm border rounded-lg shadow-lg scale-95 opacity-0 invisible group-hover:scale-100 group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
+                <div className="text-xs text-muted-foreground mb-2">
+                  Сделайте двойной клик по пустому месту на канвасе для создания заметки
+                </div>
+                <div className="text-xs text-muted-foreground/70 border-t border-border/30 pt-2">
+                  Неактивные доски автоматически удаляются через 24 часа
+                </div>
+                {/* Arrow pointing to the right */}
+                <div className="absolute top-1/2 left-full w-0 h-0 border-t-4 border-b-4 border-l-4 border-transparent border-l-border -translate-y-1/2"></div>
+              </div>
+            </div>
           </div>
         </div>
       </div>

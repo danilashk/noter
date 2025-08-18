@@ -4,17 +4,20 @@ import { useState, useRef, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { 
   EllipsisHorizontalIcon,
-  ShareIcon, 
   PlusIcon
 } from '@heroicons/react/24/outline';
 
 interface BoardMenuProps {
   sessionId: string;
-  onShare: () => void;
   trigger?: React.ReactNode;
+  currentParticipant?: {
+    id: string;
+    name: string;
+    color: string;
+  } | null;
 }
 
-export function BoardMenu({ sessionId, onShare, trigger }: BoardMenuProps) {
+export function BoardMenu({ sessionId, trigger, currentParticipant }: BoardMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
@@ -55,16 +58,23 @@ export function BoardMenu({ sessionId, onShare, trigger }: BoardMenuProps) {
       {isOpen && (
         <div className="absolute right-0 top-full mt-2 w-56 glass-effect border border-border rounded-lg shadow-lg z-50 animate-slide-up">
           <div className="py-2">
+            {/* Имя пользователя */}
+            {currentParticipant && (
+              <div className="px-3 py-2 border-b border-border/50">
+                <div className="flex items-center gap-2 min-w-0">
+                  <div
+                    className="w-3 h-3 rounded-full flex-shrink-0"
+                    style={{ backgroundColor: currentParticipant.color }}
+                  />
+                  <span className="text-sm font-medium text-foreground truncate">
+                    {currentParticipant.name}
+                  </span>
+                </div>
+              </div>
+            )}
+            
             {/* Действия */}
             <div className="py-1">
-              <button
-                onClick={onShare}
-                className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 flex items-center gap-3 transition-colors cursor-pointer"
-              >
-                <ShareIcon className="w-4 h-4" />
-                Поделиться ссылкой
-              </button>
-
               <button
                 onClick={createNewBoard}
                 className="w-full px-3 py-2 text-left text-sm hover:bg-muted/50 flex items-center gap-3 transition-colors cursor-pointer"

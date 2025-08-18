@@ -41,11 +41,20 @@ export default function RootLayout({
               borderRadius: '8px',
               boxShadow: '0 1px 3px rgba(0, 0, 0, 0.3), 0 1px 2px rgba(0, 0, 0, 0.5)',
             },
+            styles: {
+              success: {
+                border: '1px solid #10b981',
+              },
+              error: {
+                border: '1px solid #dc2626',
+              },
+            },
             classNames: {
               toast: 'group',
               title: 'text-white font-medium',
               description: 'text-gray-400',
-              error: 'border-red-800',
+              error: '!border-red-800',
+              success: '!border-green-500',
             },
           }}
           theme="dark"

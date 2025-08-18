@@ -4,6 +4,7 @@ export interface Card {
   content: string
   position_x: number
   position_y: number
+  height?: number
   created_at: string
   updated_at: string
   created_by: string

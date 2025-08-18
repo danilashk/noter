@@ -1,6 +1,6 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useState, useCallback, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -11,7 +11,7 @@ import { Cursor } from '@/components/Cursor'
 import { 
   PlusIcon, 
   TrashIcon,
-  InformationCircleIcon
+  ShareIcon
 } from '@heroicons/react/24/outline'
 import { useSession } from '@/hooks/useSession'
 import { useCardsWithRealtime } from '@/hooks/useCardsWithRealtime'
@@ -19,6 +19,8 @@ import { useParticipants } from '@/hooks/useParticipants'
 import { useCursorBroadcast } from '@/hooks/useCursorBroadcast'
 import { useDrawingWithRealtime } from '@/hooks/useDrawingWithRealtime'
 import { useCardSelectionsWithRealtime } from '@/hooks/useCardSelectionsWithRealtime'
+import { participantsApi } from '@/lib/api/participants'
+import { useParticipantsBroadcast } from '@/hooks/useParticipantsBroadcast'
 import { BoardMenu } from '@/components/BoardMenu'
 import { DrawingCanvas } from '@/components/DrawingCanvas'
 import { ToolsPanel } from '@/components/ToolsPanel'
@@ -27,6 +29,7 @@ import { UserTheme } from '@/components/UserTheme'
 import { useCanvas } from '@/hooks/useCanvas'
 import { useToast } from '@/hooks/useToast'
 import { ToastManager } from '@/components/ui/toast'
+import { toast } from 'sonner'
 
 export default function BoardPage() {
   const params = useParams()
@@ -44,6 +47,7 @@ export default function BoardPage() {
   const [draggingCard, setDraggingCard] = useState<string | null>(null);
   const [resizingCard, setResizingCard] = useState<string | null>(null);
   const [tempCardHeights, setTempCardHeights] = useState<Record<string, number>>({});
+  const [deletingCards, setDeletingCards] = useState<Set<string>>(new Set());
   
   // Toast уведомления
   const { toasts, showWarning, removeToast } = useToast();
@@ -101,6 +105,37 @@ export default function BoardPage() {
   // Card selections functionality
   const { selectCard: selectCardRealtime, deselectCard: deselectCardRealtime, getParticipantBySelectedCard } = useCardSelectionsWithRealtime(sessionId, currentParticipant?.id || null);
   
+  // Состояние для хранения всех участников сессии (включая неактивных)
+  const [allParticipants, setAllParticipants] = useState<Record<string, { color: string }>>({});
+
+  // Обработчик изменений участников в real-time
+  const handleParticipantChange = useCallback((data: any) => {
+    if (data.type === 'joined' && data.participant) {
+      setAllParticipants(prev => ({
+        ...prev,
+        [data.participant.id]: { color: data.participant.color }
+      }));
+    }
+    // Для 'left' не удаляем участника, чтобы сохранить цвета его карточек
+  }, []);
+
+  // Participants broadcast functionality
+  const { broadcastParticipantChange } = useParticipantsBroadcast(
+    sessionId,
+    currentParticipant?.id || null,
+    handleParticipantChange
+  );
+
+  // Обновляем allParticipants при изменении activeParticipants  
+  React.useEffect(() => {
+    activeParticipants.forEach(participant => {
+      setAllParticipants(prev => ({
+        ...prev,
+        [participant.id]: { color: participant.color }
+      }));
+    });
+  }, [activeParticipants]);
+
   // Функция для получения цвета создателя карточки
   const getCreatorColor = (createdBy: string | null) => {
     if (!createdBy) return currentParticipant?.color || 'hsl(var(--primary))';
@@ -111,8 +146,35 @@ export default function BoardPage() {
     }
     
     // Ищем среди активных участников
-    const creator = activeParticipants.find(p => p.id === createdBy);
-    return creator?.color || 'hsl(var(--primary))';
+    const activeCreator = activeParticipants.find(p => p.id === createdBy);
+    if (activeCreator) {
+      return activeCreator.color;
+    }
+
+    // Ищем среди всех участников (включая покинувших сессию)
+    const storedCreator = allParticipants[createdBy];
+    if (storedCreator) {
+      return storedCreator.color;
+    }
+
+    // Если не найден - пытаемся получить информацию с сервера
+    if (createdBy) {
+      // Асинхронно загружаем информацию об участнике
+      participantsApi.getParticipantsBySession(sessionId)
+        .then(participants => {
+          const creator = participants.find(p => p.id === createdBy);
+          if (creator) {
+            setAllParticipants(prev => ({
+              ...prev,
+              [creator.id]: { color: creator.color }
+            }));
+          }
+        })
+        .catch(err => console.error('Ошибка загрузки участника:', err));
+    }
+
+    // Пока используем дефолтный цвет
+    return 'hsl(var(--primary))';
   };
   
   // Canvas functionality
@@ -123,6 +185,16 @@ export default function BoardPage() {
   const handleJoinSession = async (name: string) => {
     await joinSession(name);
   };
+
+  // Отправляем broadcast уведомление при присоединении нового участника
+  useEffect(() => {
+    if (currentParticipant) {
+      broadcastParticipantChange({
+        type: 'joined',
+        participant: currentParticipant
+      });
+    }
+  }, [currentParticipant, broadcastParticipantChange]);
 
   const handleCreateCard = async () => {
     if (!sessionId) return;
@@ -156,7 +228,35 @@ export default function BoardPage() {
   };
 
   const handleCardDelete = async (cardId: string) => {
-    await deleteCard(cardId);
+    // Добавляем карточку в список удаляемых для запуска анимации
+    setDeletingCards(prev => new Set([...prev, cardId]));
+    
+    // Снимаем выделение с удаляемой карточки
+    if (selectedCard === cardId) {
+      setSelectedCard(null);
+      deselectCardRealtime();
+    }
+    
+    // Ждем завершения анимации перед фактическим удалением
+    setTimeout(async () => {
+      try {
+        await deleteCard(cardId);
+        // Убираем карточку из списка удаляемых после успешного удаления
+        setDeletingCards(prev => {
+          const updated = new Set(prev);
+          updated.delete(cardId);
+          return updated;
+        });
+      } catch (error) {
+        // В случае ошибки возвращаем карточку в исходное состояние
+        setDeletingCards(prev => {
+          const updated = new Set(prev);
+          updated.delete(cardId);
+          return updated;
+        });
+        console.error('Ошибка удаления карточки:', error);
+      }
+    }, 250); // Время должно совпадать с длительностью анимации fade-out
   };
 
   const handleCardResize = async (cardId: string, height: number) => {
@@ -284,50 +384,27 @@ export default function BoardPage() {
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Иконка информации */}
-            <div className="relative group">
-              <button className="w-10 h-10 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-600 hover:bg-muted/20 transition-all duration-200 cursor-pointer">
-                <InformationCircleIcon className="w-6 h-6" />
-              </button>
-              
-              {/* Тултип */}
-              <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-card/95 backdrop-blur-sm border rounded-lg shadow-lg scale-95 opacity-0 invisible group-hover:scale-100 group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <div className="text-xs text-muted-foreground mb-2">
-                  Сделайте двойной клик по пустому месту на канвасе для создания заметки
-                </div>
-                <div className="text-xs text-muted-foreground mb-2 border-t border-border/30 pt-2">
-                  Нажмите на свой аватар чтобы скопировать ссылку на доску и поделиться с коллегами
-                </div>
-                <div className="text-xs text-muted-foreground/70 border-t border-border/30 pt-2">
-                  Неактивные доски автоматически удаляются через 24 часа
-                </div>
-                <div className="absolute bottom-full right-4 w-0 h-0 border-l-4 border-r-4 border-b-4 border-transparent border-b-border"></div>
-              </div>
-            </div>
+            {/* Кнопка пригласить */}
+            <button
+              onClick={() => {
+                const url = window.location.href;
+                navigator.clipboard.writeText(url).then(() => {
+                  toast.success('Ссылка скопирована!');
+                }).catch(() => {
+                  alert('Ссылка: ' + url);
+                });
+              }}
+              className="group flex items-center gap-2 px-3 py-2 text-sm text-muted-foreground hover:text-foreground bg-background/30 hover:bg-background/70 border border-border/30 hover:border-border/50 rounded-lg backdrop-blur-sm transition-all duration-300 hover:shadow-md hover:scale-[1.02]"
+            >
+              <ShareIcon className="w-4 h-4 transition-transform duration-300 group-hover:scale-110" />
+              Пригласить
+            </button>
             
             {/* Аватарка текущего пользователя */}
             <div className="relative">
               <BoardMenu 
                 sessionId={sessionId}
-                onShare={() => {
-                  const url = window.location.href;
-                  navigator.clipboard.writeText(url).then(() => {
-                    // Простое уведомление
-                    const notification = document.createElement('div');
-                    notification.innerHTML = 'Ссылка скопирована!';
-                    notification.style.backgroundColor = 'hsl(var(--card))';
-                    notification.style.color = 'hsl(var(--foreground))';
-                    notification.className = 'fixed top-20 right-4 border px-4 py-3 rounded-lg shadow-lg z-50';
-                    document.body.appendChild(notification);
-                    setTimeout(() => {
-                      if (document.body.contains(notification)) {
-                        document.body.removeChild(notification);
-                      }
-                    }, 3000);
-                  }).catch(() => {
-                    alert('Ссылка: ' + url);
-                  });
-                }}
+                currentParticipant={currentParticipant}
                 trigger={
                   <button className="w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm hover:scale-105 transition-transform duration-200 shadow-lg border-2 bg-card/80 backdrop-blur-sm cursor-pointer"
                     style={{ 
@@ -356,20 +433,31 @@ export default function BoardPage() {
         }}
       >
         {cards.map((card) => (
-          <Card
+          <div
             key={card.id}
-            data-card-id={card.id}
-            className="w-64 p-4 idea-card cursor-move group glass-effect animate-float-up transition-all duration-500 ease-out relative"
+            className="absolute"
             style={{
-              position: 'absolute',
               left: card.position.x,
               top: card.position.y,
-              height: tempCardHeights[card.id] || card.height,
-              pointerEvents: isDrawingMode ? 'none' : 'auto',
               zIndex: (selectedCard === card.id || getParticipantBySelectedCard(card.id)) ? 20 : 15,
+              pointerEvents: isDrawingMode ? 'none' : 'auto',
+            }}
+          >
+          <Card
+            data-card-id={card.id}
+            className={`w-64 idea-card cursor-move group glass-effect relative flex flex-col ${
+              deletingCards.has(card.id) 
+                ? 'animate-fade-out' 
+                : resizingCard === card.id 
+                  ? 'transition-all duration-75 ease-out animate-float-up' 
+                  : 'transition-all duration-200 ease-out animate-float-up'
+            }`}
+            style={{
+              height: tempCardHeights[card.id] || card.height,
+              padding: 0,
             }}
             onClick={() => {
-              if (resizingCard) return; // Блокируем выбор во время resize
+              if (resizingCard || deletingCards.has(card.id)) return; // Блокируем выбор во время resize или удаления
               
               // Если карточка уже выбрана, ничего не делаем
               if (selectedCard === card.id) return;
@@ -383,35 +471,41 @@ export default function BoardPage() {
               selectCardRealtime(card.id);
             }}
             onMouseDown={(e) => {
-              if (isDrawingMode || resizingCard) return; // Блокируем drag во время resize
+              if (isDrawingMode || resizingCard || deletingCards.has(card.id)) return; // Блокируем drag во время resize или удаления
               
-              // Предотвращаем выделение текста при начале перетаскивания
-              e.preventDefault();
+              // Проверяем, кликнули ли на текстовый контент
+              const target = e.target as HTMLElement;
+              const isClickOnText = target.closest('.card-content') !== null || 
+                                   target.tagName === 'TEXTAREA' || 
+                                   target.tagName === 'SPAN';
               
-              // Добавляем класс для предотвращения выделения текста
-              document.body.classList.add('dragging');
-              setDraggingCard(card.id);
-              
-              const rect = e.currentTarget.getBoundingClientRect();
-              const startX = (e.clientX - panX) / scale - card.position.x;
-              const startY = (e.clientY - panY) / scale - card.position.y;
-              
-              const handleMouseMove = (e: MouseEvent) => {
-                const newX = (e.clientX - panX) / scale - startX;
-                const newY = (e.clientY - panY) / scale - startY;
-                void handleCardMove(card.id, newX, newY);
-              };
-              
-              const handleMouseUp = () => {
-                // Убираем класс после завершения перетаскивания
-                document.body.classList.remove('dragging');
-                setDraggingCard(null);
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-              };
-              
-              document.addEventListener('mousemove', handleMouseMove);
-              document.addEventListener('mouseup', handleMouseUp);
+              if (!isClickOnText) {
+                // Если клик не на тексте - сразу начинаем drag
+                e.preventDefault();
+                document.body.classList.add('dragging');
+                setDraggingCard(card.id);
+                
+                const rect = e.currentTarget.getBoundingClientRect();
+                const startX = (e.clientX - panX) / scale - card.position.x;
+                const startY = (e.clientY - panY) / scale - card.position.y;
+                
+                const handleMouseMove = (e: MouseEvent) => {
+                  const newX = (e.clientX - panX) / scale - startX;
+                  const newY = (e.clientY - panY) / scale - startY;
+                  void handleCardMove(card.id, newX, newY);
+                };
+                
+                const handleMouseUp = () => {
+                  document.body.classList.remove('dragging');
+                  setDraggingCard(null);
+                  document.removeEventListener('mousemove', handleMouseMove);
+                  document.removeEventListener('mouseup', handleMouseUp);
+                };
+                
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+              }
+              // Если клик на тексте - ничего не делаем, позволяем браузеру обработать выделение
             }}
           >
             {/* Анимированный бордер */}
@@ -438,46 +532,129 @@ export default function BoardPage() {
               }}
             />
             {/* Контент карточки */}
-            <div className="relative z-10">
-              <div className="space-y-2">
-                <div className="min-h-[60px] flex items-start">
-                  {editingCard === card.id ? (
-                    <Textarea
-                      defaultValue={card.content}
-                      placeholder="Введите вашу идею..."
-                      className="w-full h-[60px] resize-none border-none p-0 focus:ring-0 focus:outline-none focus:border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent leading-relaxed shadow-none"
-                      style={{ outline: 'none', boxShadow: 'none' }}
-                      onBlur={(e) => void handleCardUpdate(card.id, e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter' && e.shiftKey) {
-                          e.preventDefault();
-                          void handleCardUpdate(card.id, e.currentTarget.value);
-                        }
-                        if (e.key === 'Escape') {
-                          setEditingCard(null);
-                        }
-                      }}
-                      autoFocus
-                    />
+            <div className={`relative z-10 flex-1 overflow-y-auto overflow-x-hidden px-4 pt-4 pb-4 ${
+              resizingCard === card.id 
+                ? 'transition-all duration-75 ease-out' 
+                : 'transition-all duration-200 ease-out'
+            }`}>
+              {editingCard === card.id ? (
+                <Textarea
+                  defaultValue={card.content}
+                  placeholder="Введите вашу идею..."
+                  className={`card-content w-full min-h-[60px] resize-none border-0 p-0 m-0 focus:ring-0 focus:outline-none focus:border-none focus-visible:ring-0 focus-visible:ring-offset-0 bg-transparent shadow-none ${
+                    resizingCard === card.id 
+                      ? 'transition-all duration-75 ease-out' 
+                      : 'transition-all duration-200 ease-out'
+                  }`}
+                  style={{ 
+                    outline: 'none', 
+                    boxShadow: 'none',
+                    maxHeight: `${(tempCardHeights[card.id] || card.height) - 48}px`,
+                    fontSize: '1rem',
+                    lineHeight: '1.5rem',
+                    fontFamily: 'inherit',
+                    padding: '0',
+                    margin: '0'
+                  }}
+                  onBlur={(e) => void handleCardUpdate(card.id, e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && e.shiftKey) {
+                      e.preventDefault();
+                      void handleCardUpdate(card.id, e.currentTarget.value);
+                    }
+                    if (e.key === 'Escape') {
+                      setEditingCard(null);
+                    }
+                  }}
+                  autoFocus
+                />
+              ) : (
+                <div 
+                  className={`card-content cursor-text w-full break-words ${
+                    resizingCard === card.id 
+                      ? 'transition-all duration-75 ease-out' 
+                      : 'transition-all duration-200 ease-out'
+                  }`}
+                  onClick={() => !deletingCards.has(card.id) && setEditingCard(card.id)}
+                  onMouseDown={(e) => {
+                    // Позволяем браузеру обрабатывать выделение текста
+                    e.stopPropagation(); // Останавливаем всплытие до Card
+                    
+                    let dragStarted = false;
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    
+                    const handleMouseMove = (moveEvent: MouseEvent) => {
+                      const distance = Math.sqrt(
+                        Math.pow(moveEvent.clientX - startX, 2) + 
+                        Math.pow(moveEvent.clientY - startY, 2)
+                      );
+                      
+                      if (distance > 8 && !dragStarted) { // Увеличенный порог для drag
+                        dragStarted = true;
+                        // Очищаем выделение текста
+                        window.getSelection()?.removeAllRanges();
+                        document.body.classList.add('dragging');
+                        setDraggingCard(card.id);
+                        
+                        // Начинаем drag карточки
+                        const cardStartX = (startX - panX) / scale - card.position.x;
+                        const cardStartY = (startY - panY) / scale - card.position.y;
+                        
+                        const handleCardDrag = (cardMoveEvent: MouseEvent) => {
+                          const newX = (cardMoveEvent.clientX - panX) / scale - cardStartX;
+                          const newY = (cardMoveEvent.clientY - panY) / scale - cardStartY;
+                          void handleCardMove(card.id, newX, newY);
+                        };
+                        
+                        const handleMouseUp = () => {
+                          document.body.classList.remove('dragging');
+                          setDraggingCard(null);
+                          document.removeEventListener('mousemove', handleCardDrag);
+                          document.removeEventListener('mouseup', handleMouseUp);
+                        };
+                        
+                        document.addEventListener('mousemove', handleCardDrag);
+                        document.addEventListener('mouseup', handleMouseUp);
+                        
+                        // Убираем начальные обработчики
+                        document.removeEventListener('mousemove', handleMouseMove);
+                        document.removeEventListener('mouseup', cleanup);
+                      }
+                    };
+                    
+                    const cleanup = () => {
+                      document.removeEventListener('mousemove', handleMouseMove);
+                      document.removeEventListener('mouseup', cleanup);
+                    };
+                    
+                    document.addEventListener('mousemove', handleMouseMove);
+                    document.addEventListener('mouseup', cleanup);
+                  }}
+                  style={{ 
+                    wordBreak: 'break-word',
+                    fontSize: '1rem',
+                    lineHeight: '1.5rem',
+                    padding: '0',
+                    margin: '0',
+                    minHeight: `${Math.min(60, (tempCardHeights[card.id] || card.height) - 48)}px`,
+                    maxHeight: `${(tempCardHeights[card.id] || card.height) - 48}px`,
+                    overflowY: 'auto'
+                  }}
+                >
+                  {card.content ? (
+                    <span className="whitespace-pre-wrap block select-text">
+                      {card.content}
+                    </span>
                   ) : (
-                    <div 
-                      className="cursor-text leading-relaxed w-full min-h-[60px] flex items-start py-0"
-                      onClick={() => setEditingCard(card.id)}
-                    >
-                      {card.content ? (
-                        <p className="w-full">{card.content}</p>
-                      ) : (
-                        <p className="text-muted-foreground w-full">Введите вашу идею...</p>
-                      )}
-                    </div>
+                    <span className="text-muted-foreground block">Введите вашу идею...</span>
                   )}
                 </div>
-
-              </div>
+              )}
             </div>
-            
-            {/* Delete Handle - показываем для выбранной карточки */}
-            {selectedCard === card.id && !draggingCard && !resizingCard && (
+          </Card>
+            {/* Delete Handle - показываем для выбранной карточки, вне Card */}
+            {selectedCard === card.id && !draggingCard && !resizingCard && !deletingCards.has(card.id) && (
               <button
                 className="absolute -top-2 -right-2 transition-all duration-200 opacity-90 scale-100 z-30 hover:scale-110 group/delete"
                 style={{ pointerEvents: 'auto' }}
@@ -499,8 +676,8 @@ export default function BoardPage() {
               </button>
             )}
 
-            {/* Resize Handle - показываем для выбранной или при resize */}
-            {(selectedCard === card.id || resizingCard === card.id) && (
+            {/* Resize Handle - показываем для выбранной или при resize, вне Card */}
+            {(selectedCard === card.id || resizingCard === card.id) && !deletingCards.has(card.id) && (
               <div
                 className={`absolute -bottom-3 left-1/2 transform -translate-x-1/2 transition-all duration-200 hover:scale-105 group/resize ${
                   resizingCard === card.id 
@@ -587,7 +764,7 @@ export default function BoardPage() {
               </div>
             </div>
             )}
-          </Card>
+          </div>
         ))}
         
         {cards.length === 0 && !session?.hasStartedBrainstorm && (

@@ -44,11 +44,11 @@ export function Toast({ message, type = 'info', duration = 5000, onClose }: Toas
   const getTypeStyles = () => {
     switch (type) {
       case 'success':
-        return 'bg-green-500/90 border-green-400/50 text-white'
+        return 'bg-card/95 border-2 border-green-500/70 text-foreground'
       case 'warning':
-        return 'bg-yellow-500/90 border-yellow-400/50 text-white'
+        return 'bg-card/95 border-2 border-yellow-500/70 text-foreground'
       case 'error':
-        return 'bg-red-500/90 border-red-400/50 text-white'
+        return 'bg-card/95 border-2 border-red-500/70 text-foreground'
       default:
         return 'bg-card/95 border-border text-foreground'
     }

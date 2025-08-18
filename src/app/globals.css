@@ -102,17 +102,27 @@
     cursor: grabbing !important;
   }
   
-  /* Разрешаем выделение только в режиме редактирования */
-  .idea-card textarea,
-  .idea-card input {
-    user-select: text;
-    -webkit-user-select: text;
-    -moz-user-select: text;
-    -ms-user-select: text;
-    cursor: text;
+  /* Разрешаем выделение текста внутри карточек */
+  .idea-card .card-content {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
   }
   
-  .idea-card p {
+  .idea-card .card-content * {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
+  }
+  
+  .idea-card textarea,
+  .idea-card input {
+    user-select: text !important;
+    -webkit-user-select: text !important;
+    -moz-user-select: text !important;
+    -ms-user-select: text !important;
     cursor: text;
   }
   
@@ -195,12 +205,42 @@
     }
   }
   
+  @keyframes fade-out {
+    from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-8px) scale(0.95);
+    }
+  }
+  
+  @keyframes slide-out {
+    from {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    to {
+      opacity: 0;
+      transform: translateY(-12px) scale(0.9);
+    }
+  }
+  
   .animate-float-up {
     animation: fade-in 0.25s ease-out;
   }
   
   .animate-slide-up {
     animation: slide-up 0.2s ease-out;
+  }
+  
+  .animate-fade-out {
+    animation: fade-out 0.25s ease-out forwards;
+  }
+  
+  .animate-slide-out {
+    animation: slide-out 0.3s ease-out forwards;
   }
   
   /* Linear-style input */

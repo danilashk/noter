@@ -2,7 +2,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Trash2, GripVertical } from 'lucide-react'
+import { Trash2, GripVertical, MoreVertical } from 'lucide-react'
 import { TypingIndicator } from '../realtime/TypingIndicator'
 import { Card } from '@/lib/types'
 
@@ -31,9 +31,16 @@ export function RealtimeCard({
   const [content, setContent] = useState(card.content)
   const [isDragging, setIsDragging] = useState(false)
   const [dragOffset, setDragOffset] = useState({ x: 0, y: 0 })
+  const [isResizing, setIsResizing] = useState(false)
+  const [cardSize, setCardSize] = useState({ 
+    width: 250, 
+    height: Math.min(400, Math.max(180, card.height || 180))
+  })
+  const [hasOverflow, setHasOverflow] = useState(false)
   
   const textareaRef = useRef<HTMLTextAreaElement>(null)
   const cardRef = useRef<HTMLDivElement>(null)
+  const contentRef = useRef<HTMLDivElement>(null)
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
 
   // Обновляем контент при изменении карточки
@@ -43,13 +50,30 @@ export function RealtimeCard({
     }
   }, [card.content, isEditing])
 
+  // Обновляем высоту textarea при изменении размера карточки
+  useEffect(() => {
+    if (isEditing) {
+      adjustTextareaHeight()
+    }
+  }, [cardSize.height, isEditing, adjustTextareaHeight])
+
+  // Проверяем, есть ли переполнение контента
+  useEffect(() => {
+    if (!isEditing && contentRef.current) {
+      const hasScroll = contentRef.current.scrollHeight > contentRef.current.clientHeight
+      setHasOverflow(hasScroll)
+    }
+  }, [content, isEditing, cardSize.height])
+
   // Автоматическая высота textarea
   const adjustTextareaHeight = useCallback(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto'
-      textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`
+      const maxHeight = cardSize.height - 80 // Учитываем заголовок и отступы
+      const scrollHeight = textareaRef.current.scrollHeight
+      textareaRef.current.style.height = `${Math.min(scrollHeight, maxHeight)}px`
     }
-  }, [])
+  }, [cardSize.height])
 
   // Обработка изменения текста
   const handleContentChange = useCallback((value: string) => {
@@ -114,6 +138,11 @@ export function RealtimeCard({
 
   // Обработка перетаскивания
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Проверяем, не нажат ли resize контроллер
+    if ((e.target as HTMLElement).closest('.resize-handle')) {
+      return
+    }
+
     if (e.target !== e.currentTarget && !(e.target as HTMLElement).closest('.drag-handle')) {
       return
     }
@@ -165,7 +194,37 @@ export function RealtimeCard({
     }
   }, [isDragging, card.id, onUpdate])
 
-  // Подписка на события мыши для перетаскивания
+  // Обработка изменения размера
+  const handleResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsResizing(true)
+  }, [])
+
+  const handleResizeMove = useCallback((e: MouseEvent) => {
+    if (!isResizing || !cardRef.current) return
+
+    const rect = cardRef.current.getBoundingClientRect()
+    const newWidth = Math.max(200, Math.min(400, e.clientX - rect.left))
+    const newHeight = Math.max(120, Math.min(400, e.clientY - rect.top))
+
+    setCardSize({ width: newWidth, height: newHeight })
+  }, [isResizing])
+
+  const handleResizeEnd = useCallback(async () => {
+    if (!isResizing) return
+
+    setIsResizing(false)
+
+    // Сохраняем новую высоту в базе данных
+    try {
+      await onUpdate(card.id, { height: cardSize.height })
+    } catch (error) {
+      console.error('Ошибка сохранения размера:', error)
+    }
+  }, [isResizing, card.id, cardSize.height, onUpdate])
+
+  // Подписка на события мыши для перетаскивания и изменения размера
   useEffect(() => {
     if (isDragging) {
       document.addEventListener('mousemove', handleMouseMove)
@@ -177,6 +236,18 @@ export function RealtimeCard({
       }
     }
   }, [isDragging, handleMouseMove, handleMouseUp])
+
+  useEffect(() => {
+    if (isResizing) {
+      document.addEventListener('mousemove', handleResizeMove)
+      document.addEventListener('mouseup', handleResizeEnd)
+      
+      return () => {
+        document.removeEventListener('mousemove', handleResizeMove)
+        document.removeEventListener('mouseup', handleResizeEnd)
+      }
+    }
+  }, [isResizing, handleResizeMove, handleResizeEnd])
 
   // Cleanup timeout
   useEffect(() => {
@@ -190,12 +261,14 @@ export function RealtimeCard({
   return (
     <motion.div
       ref={cardRef}
-      className={`absolute bg-yellow-100 border-2 border-yellow-300 rounded-lg shadow-md min-w-[200px] min-h-[120px] cursor-pointer group ${
+      className={`absolute bg-yellow-100 border-2 border-yellow-300 rounded-lg shadow-md cursor-pointer group flex flex-col ${
         isDragging ? 'z-50 shadow-xl scale-105' : 'z-10'
-      }`}
+      } ${isResizing ? 'select-none' : ''}`}
       style={{
         left: card.position_x,
-        top: card.position_y
+        top: card.position_y,
+        width: `${cardSize.width}px`,
+        height: `${cardSize.height}px`
       }}
       initial={{ scale: 0, opacity: 0 }}
       animate={{ scale: 1, opacity: 1 }}
@@ -204,8 +277,8 @@ export function RealtimeCard({
       whileHover={{ scale: 1.02 }}
       onMouseDown={handleMouseDown}
     >
-      {/* Заголовок карточки */}
-      <div className="flex items-center justify-between p-2 border-b border-yellow-300 bg-yellow-200 rounded-t-md">
+      {/* Заголовок карточки - фиксированный */}
+      <div className="flex items-center justify-between p-2 border-b border-yellow-300 bg-yellow-200 rounded-t-md flex-shrink-0">
         <div className="drag-handle cursor-move flex items-center gap-1 text-yellow-700">
           <GripVertical className="w-4 h-4" />
           <span className="text-xs font-medium">
@@ -223,8 +296,8 @@ export function RealtimeCard({
         )}
       </div>
 
-      {/* Контент карточки */}
-      <div className="p-3 relative">
+      {/* Контент карточки - с прокруткой */}
+      <div className="p-3 relative flex-1 overflow-y-auto overflow-x-hidden min-h-0">
         {/* Индикатор печати */}
         {typingUser && (
           <TypingIndicator name={typingUser.name} color={typingUser.color} />
@@ -237,26 +310,46 @@ export function RealtimeCard({
             onChange={(e) => handleContentChange(e.target.value)}
             onKeyDown={handleKeyDown}
             onBlur={handleSave}
-            className="w-full bg-transparent border-none outline-none resize-none text-gray-800 placeholder-gray-500"
+            className="w-full bg-transparent border-none outline-none resize-none text-gray-800 placeholder-gray-500 overflow-y-auto"
             placeholder="Введите текст..."
             autoFocus
             rows={1}
+            style={{ maxHeight: `${cardSize.height - 80}px` }}
           />
         ) : (
           <div
+            ref={contentRef}
             onClick={() => setIsEditing(true)}
-            className="text-gray-800 whitespace-pre-wrap cursor-text min-h-[20px]"
+            className="text-gray-800 whitespace-pre-wrap cursor-text min-h-[20px] break-words overflow-hidden"
+            style={{ wordBreak: 'break-word' }}
           >
             {content || 'Нажмите для редактирования...'}
           </div>
         )}
 
-        {/* Подсказки при редактировании */}
+        {/* Индикатор скрытого текста */}
+        {!isEditing && hasOverflow && (
+          <div className="absolute bottom-1 right-1 text-yellow-600 pointer-events-none">
+            <MoreVertical className="w-4 h-4" />
+          </div>
+        )}
+
+        {/* Подсказки при редактировании - с фиксированной позицией */}
         {isEditing && (
-          <div className="absolute bottom-1 right-1 text-xs text-gray-500">
+          <div className="sticky bottom-0 right-0 text-xs text-gray-500 text-right mt-2 bg-yellow-100 pt-1">
             Ctrl+Enter - сохранить, Esc - отмена
           </div>
         )}
+      </div>
+
+      {/* Resize контроллер - фиксированный снизу */}
+      <div 
+        className="resize-handle absolute bottom-0 right-0 w-4 h-4 cursor-se-resize group-hover:opacity-100 opacity-0 transition-opacity"
+        onMouseDown={handleResizeStart}
+      >
+        <svg className="w-full h-full text-yellow-600 pointer-events-none" viewBox="0 0 16 16">
+          <path fill="currentColor" d="M14 14H12V16H14V14Z M10 14H8V16H10V14Z M14 10H12V12H14V10Z" />
+        </svg>
       </div>
 
       {/* Индикатор перетаскивания */}
