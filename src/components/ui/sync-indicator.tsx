@@ -21,7 +21,7 @@ export function SyncIndicator({ syncStatus, isOnline, className }: SyncIndicator
       case 'connected':
         return <Wifi className="w-4 h-4 text-green-500" />
       case 'connecting':
-        return <RotateCcw className="w-4 h-4 text-yellow-500 animate-spin" />
+        return <RotateCcw className="w-4 h-4 text-primary animate-spin" />
       case 'disconnected':
         return <WifiOff className="w-4 h-4 text-red-500" />
     }

@@ -29,6 +29,7 @@ import { UserTheme } from '@/components/UserTheme'
 import { useCanvas } from '@/hooks/useCanvas'
 import { useToast } from '@/hooks/useToast'
 import { ToastManager } from '@/components/ui/toast'
+import { Loader } from '@/components/ui/loader'
 import { toast } from 'sonner'
 
 export default function BoardPage() {
@@ -50,7 +51,7 @@ export default function BoardPage() {
   const [deletingCards, setDeletingCards] = useState<Set<string>>(new Set());
   
   // Toast уведомления
-  const { toasts, showWarning, removeToast } = useToast();
+  const { toasts, showWarning, showError, removeToast } = useToast();
 
   // Обрабатываем params и обновляем sessionId
   React.useEffect(() => {
@@ -65,6 +66,7 @@ export default function BoardPage() {
     
     // Проверяем валидность ID (должен быть UUID или 'new')
     const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
+    const isOriginalIdCorrupted = id !== cleanId && id !== 'new';
     
     if (id === 'new' && !hasRedirected) {
       const newId = crypto.randomUUID();
@@ -72,22 +74,12 @@ export default function BoardPage() {
       setHasRedirected(true);
       // Используем Next.js router для правильной навигации
       router.replace(`/board/${newId}`);
-    } else if (id !== 'new' && !isValidUUID) {
-      // Некорректный ID - редиректим на главную с уведомлением
-      showWarning(
-        'Некорректная ссылка на доску. Вы будете перенаправлены для создания новой доски.',
-        6000
-      );
-      setTimeout(() => {
-        router.replace('/board/new');
-      }, 1000);
-    } else if (id !== 'new' && cleanId !== sessionId && isValidUUID) {
-      // Используем очищенный ID
+    } else if (id !== 'new' && (!isValidUUID || isOriginalIdCorrupted)) {
+      // Некорректный ID или поврежденный URL - редиректим с флагом ошибки
+      router.replace('/board?error=404');
+    } else if (id !== 'new' && cleanId !== sessionId && isValidUUID && !isOriginalIdCorrupted) {
+      // Используем валидный ID
       setSessionId(cleanId);
-      // Если ID был с мусором, редиректим на чистый URL
-      if (id !== cleanId) {
-        router.replace(`/board/${cleanId}`);
-      }
     }
   }, [params.id, router, hasRedirected, sessionId, showWarning]);
 
@@ -294,18 +286,7 @@ export default function BoardPage() {
   }, [sessionError, participantsError, showWarning]);
 
   if (sessionLoading || cardsLoading || participantsLoading || isRestoring) {
-    return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <Card className="p-8 glass-effect">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-2 border-primary/30 border-t-primary mx-auto"></div>
-            <p className="mt-6 text-muted-foreground">
-              {isRestoring ? 'Восстановление сессии...' : 'Загрузка...'}
-            </p>
-          </div>
-        </Card>
-      </div>
-    );
+    return <Loader message={isRestoring ? 'Восстановление сессии...' : 'Загрузка...'} />;
   }
 
   if (!currentParticipant && !isRestoring) {
