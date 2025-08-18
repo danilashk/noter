@@ -67,10 +67,6 @@ export function ParticipantDialog({ isOpen, onJoin, sessionTitle, isNewSession =
             <h2 className="text-2xl font-semibold mb-2">
               {isNewSession ? 'Создание новой доски' : 'Присоединиться к доске'}
             </h2>
-            
-            <p className="text-sm text-muted-foreground">
-              Ваш цвет будет назначен автоматически
-            </p>
           </div>
           
           {/* Form */}
