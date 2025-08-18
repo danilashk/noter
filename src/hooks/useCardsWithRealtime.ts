@@ -1,12 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { cardsApi } from '../lib/api/cards';
 import { useCardsBroadcast } from './useCardsBroadcast';
+import { handleRateLimitError } from '../../lib/rate-limit';
+import { toast } from 'sonner';
 import type { Card, CreateCardData, UpdateCardData } from '../lib/types/board';
 
 interface UseCardsRealtimeState {
   cards: Card[];
   loading: boolean;
-  error: string | null;
   isRealtimeConnected: boolean;
 }
 
@@ -26,7 +27,6 @@ export function useCardsWithRealtime(
 ): UseCardsRealtimeState & UseCardsRealtimeActions {
   const [cards, setCards] = useState<Card[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
   // Обработчик realtime изменений карточек от других пользователей
   const handleCardChange = useCallback((data: any) => {
@@ -102,13 +102,12 @@ export function useCardsWithRealtime(
 
     try {
       setLoading(true);
-      setError(null);
       const fetchedCards = await cardsApi.getCardsBySession(sessionId);
       setCards(fetchedCards);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Неизвестная ошибка';
       console.error('useCardsWithRealtime: fetch failed:', err);
-      setError(errorMessage);
+      // Не устанавливаем ошибку в state, просто логируем
     } finally {
       setLoading(false);
     }
@@ -120,7 +119,6 @@ export function useCardsWithRealtime(
 
   const createCard = useCallback(async (cardData: CreateCardData) => {
     try {
-      setError(null);
       const newCard = await cardsApi.createCard(sessionId, cardData);
       
       // Обновляем локальное состояние
@@ -132,9 +130,19 @@ export function useCardsWithRealtime(
         card: newCard
       });
       
-      } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'Ошибка создания карточки';
-      setError(errorMessage);
+    } catch (err) {
+      // Проверяем, является ли это rate limit ошибкой
+      const isRateLimitError = handleRateLimitError(err);
+      
+      if (!isRateLimitError) {
+        // Если это не rate limit, показываем обычную ошибку через toast
+        const errorMessage = err instanceof Error ? err.message : 'Ошибка создания карточки';
+        toast.error('Ошибка создания карточки', {
+          description: errorMessage,
+          duration: 3000
+        });
+      }
+      
       console.error('Ошибка создания карточки:', err);
       throw err;
     }
@@ -142,7 +150,6 @@ export function useCardsWithRealtime(
 
   const updateCard = useCallback(async (cardId: string, updates: UpdateCardData) => {
     try {
-      setError(null);
       const updatedCard = await cardsApi.updateCard(cardId, updates);
       
       // Обновляем локальное состояние
@@ -156,9 +163,12 @@ export function useCardsWithRealtime(
         card: updatedCard
       });
       
-      } catch (err) {
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ошибка обновления карточки';
-      setError(errorMessage);
+      toast.error('Ошибка обновления', {
+        description: errorMessage,
+        duration: 3000
+      });
       console.error('Ошибка обновления карточки:', err);
       throw err;
     }
@@ -166,7 +176,6 @@ export function useCardsWithRealtime(
 
   const deleteCard = useCallback(async (cardId: string) => {
     try {
-      setError(null);
       await cardsApi.deleteCard(cardId);
       
       // Обновляем локальное состояние
@@ -178,9 +187,12 @@ export function useCardsWithRealtime(
         cardId
       });
       
-      } catch (err) {
+    } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ошибка удаления карточки';
-      setError(errorMessage);
+      toast.error('Ошибка удаления', {
+        description: errorMessage,
+        duration: 3000
+      });
       console.error('Ошибка удаления карточки:', err);
       throw err;
     }
@@ -205,13 +217,12 @@ export function useCardsWithRealtime(
       // Отправляем обновление на сервер
       await cardsApi.updateCard(cardId, { position });
       
-      } catch (err) {
+    } catch (err) {
       // В случае ошибки, откатываем изменения
       await fetchCards();
       const errorMessage = err instanceof Error ? err.message : 'Ошибка обновления позиции';
-      setError(errorMessage);
       console.error('Ошибка обновления позиции:', err);
-      throw err;
+      // Не показываем toast для ошибок позиционирования, т.к. они обычно временные
     }
   }, [fetchCards, broadcastCardChange]);
 
@@ -234,13 +245,12 @@ export function useCardsWithRealtime(
       // Отправляем обновление на сервер
       await cardsApi.updateCard(cardId, { height });
       
-      } catch (err) {
+    } catch (err) {
       // В случае ошибки, откатываем изменения
       await fetchCards();
       const errorMessage = err instanceof Error ? err.message : 'Ошибка обновления размера';
-      setError(errorMessage);
       console.error('Ошибка обновления размера:', err);
-      throw err;
+      // Не показываем toast для ошибок изменения размера, т.к. они обычно временные
     }
   }, [fetchCards, broadcastCardChange]);
 
@@ -266,13 +276,12 @@ export function useCardsWithRealtime(
       // Отправляем обновления на сервер
       await cardsApi.updateCardPositions(updates);
       
-      } catch (err) {
+    } catch (err) {
       // В случае ошибки, откатываем изменения
       await fetchCards();
       const errorMessage = err instanceof Error ? err.message : 'Ошибка обновления позиций';
-      setError(errorMessage);
       console.error('Ошибка обновления позиций:', err);
-      throw err;
+      // Не показываем toast для ошибок позиционирования, т.к. они обычно временные
     }
   }, [fetchCards, broadcastCardChange]);
 
@@ -283,7 +292,6 @@ export function useCardsWithRealtime(
   return {
     cards,
     loading,
-    error,
     isRealtimeConnected,
     createCard,
     updateCard,

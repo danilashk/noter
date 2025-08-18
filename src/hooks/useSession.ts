@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { sessionsApi } from '../lib/api/sessions';
+import { toast } from 'sonner';
 import type { Session } from '../lib/types/board';
 
 interface UseSessionState {
@@ -28,9 +29,16 @@ export function useSession(sessionId: string): UseSessionState & UseSessionActio
       return;
     }
 
+    // Валидация UUID формата
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
+    if (!isValidUUID) {
+      console.error('Некорректный UUID сессии:', sessionId);
+      setLoading(false);
+      return;
+    }
+
     try {
       setLoading(true);
-      setError(null);
       
       // Получаем или создаем сессию
       const fetchedSession = await sessionsApi.getOrCreateSession(sessionId);
@@ -38,7 +46,16 @@ export function useSession(sessionId: string): UseSessionState & UseSessionActio
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Неизвестная ошибка';
       console.error('useSession: fetch failed:', err);
-      setError(errorMessage);
+      
+      // Показываем toast для ошибок UUID
+      if (errorMessage.includes('invalid input syntax for type uuid')) {
+        toast.error('Некорректная ссылка на доску', {
+          description: 'Проверьте правильность ссылки',
+          duration: 3000
+        });
+      }
+      
+      // Не устанавливаем ошибку в state
     } finally {
       setLoading(false);
     }

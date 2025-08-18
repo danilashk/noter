@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { participantsApi } from '../lib/api/participants';
 import { getStableUserId, getUserColor, getShortUserId } from '../lib/user-fingerprint';
+import { toast } from 'sonner';
 import type { Participant } from '../lib/types/board';
 
 interface UseParticipantsState {
@@ -46,8 +47,16 @@ export function useParticipants(sessionId: string): UseParticipantsState & UsePa
       return;
     }
 
+    // Валидация UUID формата
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
+    if (!isValidUUID) {
+      console.error('Некорректный UUID сессии:', sessionId);
+      // Не устанавливаем ошибку в state, просто логируем
+      setLoading(false);
+      return;
+    }
+
     try {
-      setError(null);
       const [allParticipants, activeList] = await Promise.all([
         participantsApi.getParticipantsBySession(sessionId),
         participantsApi.getActiveParticipants(sessionId),
@@ -57,8 +66,21 @@ export function useParticipants(sessionId: string): UseParticipantsState & UsePa
       setActiveParticipants(activeList);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Ошибка загрузки участников';
-      setError(errorMessage);
-      console.error('Ошибка загрузки участников:', err);
+      
+      // Показываем toast вместо установки ошибки в state
+      if (errorMessage.includes('invalid input syntax for type uuid')) {
+        toast.error('Некорректная ссылка на доску', {
+          description: 'Вы будете перенаправлены на создание новой доски',
+          duration: 3000
+        });
+      } else {
+        // Для других ошибок просто логируем
+        console.error('Ошибка загрузки участников:', err);
+      }
+      
+      // Не устанавливаем ошибку в state
+      setParticipants([]);
+      setActiveParticipants([]);
     } finally {
       setLoading(false);
     }

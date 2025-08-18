@@ -56,8 +56,11 @@ export default function BoardPage() {
       return;
     }
     
+    // Очищаем ID от лишних символов (например, URL encoding)
+    const cleanId = decodeURIComponent(id).split(/[^0-9a-f-]/i)[0];
+    
     // Проверяем валидность ID (должен быть UUID или 'new')
-    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    const isValidUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(cleanId);
     
     if (id === 'new' && !hasRedirected) {
       const newId = crypto.randomUUID();
@@ -68,21 +71,26 @@ export default function BoardPage() {
     } else if (id !== 'new' && !isValidUUID) {
       // Некорректный ID - редиректим на главную с уведомлением
       showWarning(
-        'Некорректная ссылка на доску. Вы были перенаправлены для создания новой доски.',
+        'Некорректная ссылка на доску. Вы будете перенаправлены для создания новой доски.',
         6000
       );
       setTimeout(() => {
         router.replace('/board/new');
       }, 1000);
-    } else if (id !== 'new' && id !== sessionId && isValidUUID) {
-      setSessionId(id);
+    } else if (id !== 'new' && cleanId !== sessionId && isValidUUID) {
+      // Используем очищенный ID
+      setSessionId(cleanId);
+      // Если ID был с мусором, редиректим на чистый URL
+      if (id !== cleanId) {
+        router.replace(`/board/${cleanId}`);
+      }
     }
   }, [params.id, router, hasRedirected, sessionId, showWarning]);
 
   // Включаем все хуки
   const { session, loading: sessionLoading, error: sessionError, updateHasStartedBrainstorm } = useSession(sessionId);
   const { activeParticipants, currentParticipant, loading: participantsLoading, error: participantsError, isRestoring, joinSession, leaveSession } = useParticipants(sessionId);
-  const { cards, loading: cardsLoading, error: cardsError, isRealtimeConnected, createCard, updateCard, deleteCard, updateCardPosition, updateCardHeight } = useCardsWithRealtime(sessionId, currentParticipant?.id || null);
+  const { cards, loading: cardsLoading, isRealtimeConnected, createCard, updateCard, deleteCard, updateCardPosition, updateCardHeight } = useCardsWithRealtime(sessionId, currentParticipant?.id || null);
   
   // Оптимизированный realtime broadcast для курсоров
   const { cursors, startTracking } = useCursorBroadcast(sessionId, currentParticipant);
@@ -163,6 +171,28 @@ export default function BoardPage() {
     }
   }, [currentParticipant, startTracking]);
 
+  // Обрабатываем ошибки через useEffect чтобы не блокировать рендеринг
+  React.useEffect(() => {
+    if (sessionError || participantsError) {
+      const errorMessage = sessionError || participantsError;
+      
+      // Проверяем, является ли это rate limit ошибкой
+      if (errorMessage.includes('RATE_LIMIT_EXCEEDED')) {
+        // Rate limit ошибки уже обрабатываются в handleRateLimitError
+        return;
+      }
+      
+      // Проверяем, является ли это ошибкой UUID
+      if (errorMessage.includes('invalid input syntax for type uuid')) {
+        // UUID ошибки уже обрабатываются в хуках
+        return;
+      }
+      
+      // Для других критических ошибок показываем toast
+      showWarning(errorMessage, 5000);
+    }
+  }, [sessionError, participantsError, showWarning]);
+
   if (sessionLoading || cardsLoading || participantsLoading || isRestoring) {
     return (
       <div className="min-h-screen gradient-bg flex items-center justify-center">
@@ -172,18 +202,6 @@ export default function BoardPage() {
             <p className="mt-6 text-muted-foreground">
               {isRestoring ? 'Восстановление сессии...' : 'Загрузка...'}
             </p>
-          </div>
-        </Card>
-      </div>
-    );
-  }
-
-  if (sessionError || cardsError || participantsError) {
-    return (
-      <div className="min-h-screen gradient-bg flex items-center justify-center">
-        <Card className="p-8 glass-effect border-destructive">
-          <div className="text-center">
-            <p className="text-destructive">Ошибка: {sessionError || cardsError || participantsError}</p>
           </div>
         </Card>
       </div>
@@ -274,11 +292,11 @@ export default function BoardPage() {
               
               {/* Тултип */}
               <div className="absolute top-full right-0 mt-2 w-64 p-3 bg-card/95 backdrop-blur-sm border rounded-lg shadow-lg scale-95 opacity-0 invisible group-hover:scale-100 group-hover:opacity-100 group-hover:visible transition-all duration-200 z-50">
-                <div className="text-sm text-foreground font-medium mb-1">
-                  Как создать заметку:
-                </div>
                 <div className="text-xs text-muted-foreground mb-2">
-                  Сделайте двойной клик по пустому месту на канвасе
+                  Сделайте двойной клик по пустому месту на канвасе для создания заметки
+                </div>
+                <div className="text-xs text-muted-foreground mb-2 border-t border-border/30 pt-2">
+                  Нажмите на свой аватар чтобы скопировать ссылку на доску и поделиться с коллегами
                 </div>
                 <div className="text-xs text-muted-foreground/70 border-t border-border/30 pt-2">
                   Неактивные доски автоматически удаляются через 24 часа
