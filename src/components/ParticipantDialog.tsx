@@ -305,7 +305,7 @@ export function ParticipantDialog({
         <Cursor
           x={cursorPosition.x}
           y={cursorPosition.y}
-          name="Алекс Р."
+          name="Алекс"
           color={demoConfig.colors.cursor1}
         />
       )}
@@ -315,7 +315,7 @@ export function ParticipantDialog({
         <Cursor
           x={secondCursorPosition.x}
           y={secondCursorPosition.y}
-          name="Мария С."
+          name="Мария"
           color={demoConfig.colors.cursor2}
         />
       )}
