@@ -1,12 +1,12 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { Suspense, useEffect, useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useToast } from '@/hooks/useToast'
 import { ToastManager } from '@/components/ui/toast'
 import { Loader } from '@/components/ui/loader'
 
-export default function BoardRedirectPage() {
+function BoardRedirectContent() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const { toasts, showError, removeToast } = useToast()
@@ -55,5 +55,13 @@ export default function BoardRedirectPage() {
       {/* Toast уведомления */}
       <ToastManager toasts={toasts} onRemoveToast={removeToast} />
     </>
+  )
+}
+
+export default function BoardRedirectPage() {
+  return (
+    <Suspense fallback={<Loader message="Загрузка..." />}>
+      <BoardRedirectContent />
+    </Suspense>
   )
 }
