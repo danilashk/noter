@@ -42,6 +42,66 @@ export function ParticipantDialog({
   const [name, setName] = useState('');
   const [isJoining, setIsJoining] = useState(false);
   
+  // Генерируем случайные цвета и позицию при монтировании
+  const [demoConfig] = useState(() => {
+    // Все доступные цвета
+    const allColors = ['#E53E3E', '#3182CE', '#38A169', '#D69E2E', '#805AD5', '#DD6B20'];
+    
+    // Выбираем 3 разных случайных цвета
+    const shuffled = [...allColors].sort(() => Math.random() - 0.5);
+    const selectedColors = {
+      card: shuffled[0],
+      cursor1: shuffled[1],
+      cursor2: shuffled[2]
+    };
+    
+    // Генерируем позицию карточки - максимально слева
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    const marginFromEdge = 50; // Небольшой отступ от края экрана
+    const cardWidth = 256;
+    const cardHeight = 120;
+    
+    // Максимальная позиция X - чтобы карточка была как можно левее
+    // но не ближе чем centerX - 450 (чтобы даже с курсорами не пересекалась с центром)
+    const maxX = Math.min(350, centerX - 450); // Не дальше 350px от левого края
+    
+    // Определяем 2 безопасные зоны только в левом краю
+    const zones = [
+      { // Левый верхний угол
+        minX: marginFromEdge,
+        maxX: maxX,
+        minY: marginFromEdge,
+        maxY: centerY - 350 // Еще дальше от центра по вертикали
+      },
+      { // Левый нижний угол
+        minX: marginFromEdge,
+        maxX: maxX,
+        minY: centerY + 350, // Еще дальше от центра по вертикали
+        maxY: window.innerHeight - marginFromEdge - cardHeight
+      }
+    ].filter(zone => zone.maxX > zone.minX && zone.maxY > zone.minY);
+    
+    // Если нет валидных зон (очень маленький экран), используем фиксированную позицию
+    const zone = zones.length > 0 
+      ? zones[Math.floor(Math.random() * zones.length)] 
+      : {
+          minX: marginFromEdge,
+          maxX: marginFromEdge + 100,
+          minY: marginFromEdge,
+          maxY: marginFromEdge + 100
+        };
+    
+    // Генерируем позицию в выбранной зоне
+    const x = zone.minX + Math.random() * (zone.maxX - zone.minX);
+    const y = zone.minY + Math.random() * (zone.maxY - zone.minY);
+    
+    return {
+      colors: selectedColors,
+      cardPosition: { x, y }
+    };
+  });
+  
   // Состояния для демо-анимации
   const [showDemoCard, setShowDemoCard] = useState(false);
   const [demoCardText, setDemoCardText] = useState('');
@@ -51,11 +111,6 @@ export function ParticipantDialog({
   const [secondCursorPosition, setSecondCursorPosition] = useState({ x: 0, y: 0 });
   
   const demoText = 'Отличная идея для продукта!';
-  const demoColors = {
-    card: '#805AD5', // Фиолетовый цвет для карточки
-    cursor1: '#E53E3E', // Красный цвет для первого курсора
-    cursor2: '#38A169' // Зеленый цвет для второго курсора
-  };
 
   useEffect(() => {
     if (!isOpen) return;
@@ -78,10 +133,10 @@ export function ParticipantDialog({
               // После завершения печатания показываем курсоры
               setTimeout(() => {
                 setShowDemoCursor(true);
-                // Второй курсор появляется чуть позже
+                // Второй курсор появляется через 6 секунд
                 setTimeout(() => {
                   setShowSecondCursor(true);
-                }, 800);
+                }, 6000);
               }, 500);
             }
           }, 100); // Скорость печатания
@@ -92,84 +147,74 @@ export function ParticipantDialog({
     startDemoAnimation();
   }, [isOpen]);
 
-  // Анимация движения первого курсора (красный) - из левого верхнего угла
+
+
+  // Анимация первого курсора с плавным появлением
   useEffect(() => {
     if (!showDemoCursor) return;
 
     const animateCursor = () => {
-      // Стартовая позиция - левый верхний угол
-      let currentX = 50;
-      let currentY = 50;
-      let targetX = 350;
-      let targetY = 150;
-      let movingToTarget = true;
+      let time = 0;
+      let currentX = 50; // Начальная позиция в левом углу
+      let currentY = 100;
+      const speed = 0.007;
+      const centerX = demoConfig.cardPosition.x + 128;
+      const centerY = demoConfig.cardPosition.y + 60;
       
       const moveInterval = setInterval(() => {
-        // Плавное движение с easing
-        if (movingToTarget) {
-          const speed = 0.05; // Оптимальная скорость для плавности
-          currentX += (targetX - currentX) * speed;
-          currentY += (targetY - currentY) * speed;
-          
-          // Если достигли цели, меняем цель через некоторое время
-          if (Math.abs(currentX - targetX) < 2 && Math.abs(currentY - targetY) < 2) {
-            setTimeout(() => {
-              // Новая случайная цель в левой части экрана
-              targetX = 100 + Math.random() * 300;
-              targetY = 100 + Math.random() * 150;
-            }, 1000 + Math.random() * 2000); // Пауза 1-3 секунды
-          }
-          
-          setCursorPosition({ 
-            x: currentX, 
-            y: currentY 
-          });
-        }
+        time += speed;
+        
+        // Целевая позиция по эллиптической траектории
+        const targetX = centerX + Math.cos(time) * 200;
+        const targetY = centerY + Math.sin(time * 1.3) * 120;
+        
+        // Медленное движение к цели (плавное появление)
+        const easeSpeed = Math.min(0.02 + time * 0.001, 0.08); // Ускоряется со временем
+        currentX += (targetX - currentX) * easeSpeed;
+        currentY += (targetY - currentY) * easeSpeed;
+        
+        setCursorPosition({ x: currentX, y: currentY });
       }, 16);
 
       return () => clearInterval(moveInterval);
     };
 
     return animateCursor();
-  }, [showDemoCursor]);
+  }, [showDemoCursor, demoConfig.cardPosition]);
 
-  // Анимация движения второго курсора (зеленый) - из левого нижнего угла
+  // Анимация второго курсора с плавным появлением из другого угла
   useEffect(() => {
     if (!showSecondCursor) return;
 
     const animateCursor = () => {
-      // Стартовая позиция - левый нижний угол
-      let currentX = 80;
-      let currentY = window.innerHeight - 100;
-      let targetX = 250;
-      let targetY = 280;
+      let time = 0;
+      let currentX = 80; // Начальная позиция в левом нижнем углу
+      let currentY = window.innerHeight - 150;
+      const speed = 0.005;
+      const centerX = demoConfig.cardPosition.x + 128;
+      const centerY = demoConfig.cardPosition.y + 60;
       
       const moveInterval = setInterval(() => {
-        // Супер плавное движение
-        const speed = 0.04; // Чуть медленнее для разнообразия
-        currentX += (targetX - currentX) * speed;
-        currentY += (targetY - currentY) * speed;
+        time += speed;
         
-        // Если достигли цели, выбираем новую
-        if (Math.abs(currentX - targetX) < 2 && Math.abs(currentY - targetY) < 2) {
-          setTimeout(() => {
-            // Движение вокруг карточки
-            targetX = 150 + Math.random() * 250;
-            targetY = 200 + Math.random() * 150;
-          }, 1500 + Math.random() * 2000); // Пауза 1.5-3.5 секунды
-        }
+        // Целевая позиция по траектории восьмерки
+        const scale = 180;
+        const targetX = centerX + (scale * Math.cos(time)) / (1 + Math.sin(time) * Math.sin(time));
+        const targetY = centerY + (scale * Math.sin(time) * Math.cos(time)) / (1 + Math.sin(time) * Math.sin(time));
         
-        setSecondCursorPosition({ 
-          x: currentX, 
-          y: currentY 
-        });
+        // Медленное движение к цели (плавное появление)
+        const easeSpeed = Math.min(0.015 + time * 0.0008, 0.06); // Медленнее чем первый
+        currentX += (targetX - currentX) * easeSpeed;
+        currentY += (targetY - currentY) * easeSpeed;
+        
+        setSecondCursorPosition({ x: currentX, y: currentY });
       }, 16);
 
       return () => clearInterval(moveInterval);
     };
 
     return animateCursor();
-  }, [showSecondCursor]);
+  }, [showSecondCursor, demoConfig.cardPosition]);
 
   const handleJoin = async () => {
     if (!name.trim()) return;
@@ -200,8 +245,8 @@ export function ParticipantDialog({
         <div
           className="absolute transition-all duration-500 ease-out animate-float-up"
           style={{
-            left: 100,
-            top: 100,
+            left: demoConfig.cardPosition.x,
+            top: demoConfig.cardPosition.y,
             zIndex: 10,
           }}
         >
@@ -219,7 +264,7 @@ export function ParticipantDialog({
                 borderTop: '2px solid transparent',
                 borderRight: '2px solid transparent', 
                 borderBottom: '2px solid transparent',
-                borderLeft: `4px solid ${demoColors.card}`,
+                borderLeft: `4px solid ${demoConfig.colors.card}`,
                 borderRadius: 'inherit'
               }}
             />
@@ -261,7 +306,7 @@ export function ParticipantDialog({
           x={cursorPosition.x}
           y={cursorPosition.y}
           name="Алекс Р."
-          color={demoColors.cursor1}
+          color={demoConfig.colors.cursor1}
         />
       )}
       
@@ -271,7 +316,7 @@ export function ParticipantDialog({
           x={secondCursorPosition.x}
           y={secondCursorPosition.y}
           name="Мария С."
-          color={demoColors.cursor2}
+          color={demoConfig.colors.cursor2}
         />
       )}
       
