@@ -25,9 +25,18 @@ interface ParticipantDialogProps {
   onJoin: (name: string) => Promise<void>;
   sessionTitle?: string;
   isNewSession?: boolean;
+  participantCount?: number;
+  activeParticipantCount?: number;
 }
 
-export function ParticipantDialog({ isOpen, onJoin, sessionTitle, isNewSession = false }: ParticipantDialogProps) {
+export function ParticipantDialog({ 
+  isOpen, 
+  onJoin, 
+  sessionTitle, 
+  isNewSession = false, 
+  participantCount, 
+  activeParticipantCount 
+}: ParticipantDialogProps) {
   const [name, setName] = useState('');
   const [isJoining, setIsJoining] = useState(false);
 
@@ -67,6 +76,14 @@ export function ParticipantDialog({ isOpen, onJoin, sessionTitle, isNewSession =
             <h2 className="text-2xl font-semibold mb-2">
               {isNewSession ? 'Создание новой доски' : 'Присоединиться к доске'}
             </h2>
+            
+            {!isNewSession && (participantCount !== undefined) && (
+              <div className="mb-4">
+                <p className="text-sm text-gray-500 text-center">
+                  Количество участников: {participantCount}
+                </p>
+              </div>
+            )}
           </div>
           
           {/* Form */}

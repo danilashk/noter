@@ -28,6 +28,7 @@ import { GridBackground } from '@/components/GridBackground'
 import { UserTheme } from '@/components/UserTheme'
 import { useCanvas } from '@/hooks/useCanvas'
 import { useToast } from '@/hooks/useToast'
+import { useSessionStats } from '@/hooks/useSessionStats'
 import { ToastManager } from '@/components/ui/toast'
 import { Loader } from '@/components/ui/loader'
 import { toast } from 'sonner'
@@ -87,6 +88,9 @@ export default function BoardPage() {
   const { session, loading: sessionLoading, error: sessionError, updateHasStartedBrainstorm } = useSession(sessionId);
   const { activeParticipants, currentParticipant, loading: participantsLoading, error: participantsError, isRestoring, joinSession, leaveSession } = useParticipants(sessionId);
   const { cards, loading: cardsLoading, isRealtimeConnected, createCard, updateCard, deleteCard, updateCardPosition, updateCardHeight } = useCardsWithRealtime(sessionId, currentParticipant?.id || null);
+  
+  // Получаем статистику сессии для диалога приглашения
+  const { stats: sessionStats, loading: statsLoading } = useSessionStats(!currentParticipant ? sessionId : null);
   
   // Оптимизированный realtime broadcast для курсоров
   const { cursors, startTracking } = useCursorBroadcast(sessionId, currentParticipant);
@@ -291,9 +295,18 @@ export default function BoardPage() {
 
   if (!currentParticipant && !isRestoring) {
     // Определяем, новая ли это сессия (нет других участников)
-    const isNewSession = activeParticipants.length === 0;
+    const isNewSession = activeParticipants.length === 0 && (!sessionStats || sessionStats.participantCount === 0);
     
-    return <ParticipantDialog isOpen={true} onJoin={handleJoinSession} sessionTitle={session?.title} isNewSession={isNewSession} />;
+    return (
+      <ParticipantDialog 
+        isOpen={true} 
+        onJoin={handleJoinSession} 
+        sessionTitle={session?.title} 
+        isNewSession={isNewSession}
+        participantCount={sessionStats?.participantCount}
+        activeParticipantCount={sessionStats?.activeParticipantCount}
+      />
+    );
   }
 
   return (

@@ -2,8 +2,8 @@
  * API функции для работы с досками с поддержкой rate limiting
  */
 
-import { supabase } from '@/lib/supabase'
-import { handleRateLimitError, getUserFingerprint } from '@/lib/rate-limit'
+import { supabase } from '../supabase'
+import { handleRateLimitError, getUserFingerprint } from '../rate-limit'
 
 export interface CreateBoardData {
   title: string
@@ -25,6 +25,13 @@ export interface ApiResponse<T> {
   error?: string
   message?: string
   code?: string
+}
+
+export interface SessionStats {
+  participantCount: number
+  activeParticipantCount: number
+  sessionTitle: string | null
+  createdAt: string
 }
 
 /**
@@ -166,6 +173,29 @@ export async function deleteBoard(boardId: string): Promise<void> {
     }
   } catch (error) {
     console.error('Ошибка удаления доски:', error)
+    throw error
+  }
+}
+
+/**
+ * Получает статистику сессии (количество участников)
+ */
+export async function getSessionStats(sessionId: string): Promise<SessionStats | null> {
+  try {
+    const response = await fetch(`/api/sessions/${sessionId}/stats`)
+    
+    if (response.status === 404) {
+      return null
+    }
+    
+    if (!response.ok) {
+      const error = await response.json()
+      throw new Error(error.error || 'Failed to fetch session stats')
+    }
+    
+    return await response.json()
+  } catch (error) {
+    console.error('Ошибка получения статистики сессии:', error)
     throw error
   }
 }
