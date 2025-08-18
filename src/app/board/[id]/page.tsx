@@ -290,7 +290,7 @@ export default function BoardPage() {
   }, [sessionError, participantsError, showWarning]);
 
   if (sessionLoading || cardsLoading || participantsLoading || isRestoring) {
-    return <Loader message={isRestoring ? 'Восстановление сессии...' : 'Загрузка...'} />;
+    return <Loader message={'Загрузка...'} />;
   }
 
   if (!currentParticipant && !isRestoring) {
